@@ -1,0 +1,12 @@
+import { defineConfig } from "prisma/config";
+
+// Prisma will read DATABASE_URL from environment variables automatically
+// Make sure DATABASE_URL is set in .env.local file
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  engine: "classic",
+  // Don't override datasource - let Prisma read it from schema.prisma
+});

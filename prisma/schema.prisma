@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+        
+        
+model User {
+  id        String   @id // Use Supabase Auth user ID
+  name      String
+  email     String   @unique
+  password  String?  // Optional - Supabase handles authentication
+  createdAt DateTime @default(now())
+  
+  mocks     MockApi[]
+  history   RequestHistory[]
+}
+
+model MockApi {
+  id           String   @id @default(uuid())
+  userId       String
+  name         String
+  endpoint     String
+  method       String
+  responseBody Json
+  responseCode Int      @default(200)
+  createdAt    DateTime @default(now())
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+model RequestHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  url          String
+  method       String
+  status       Int
+  responseTime Float
+  responseBody Json?
+  createdAt    DateTime @default(now())
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+}
