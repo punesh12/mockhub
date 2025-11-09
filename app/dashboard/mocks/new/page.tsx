@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -290,14 +291,24 @@ export default function CreateMockPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <textarea
-                  id="responseBody"
-                  value={formData.responseBody}
-                  onChange={(e) => handleChange("responseBody", e.target.value)}
-                  className="w-full min-h-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-                  placeholder='{"message": "Hello World"}'
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <textarea
+                    id="responseBody"
+                    value={formData.responseBody}
+                    onChange={(e) => handleChange("responseBody", e.target.value)}
+                    className="w-full min-h-[300px] rounded-md border-2 border-input bg-muted/30 px-4 py-3 text-sm font-mono leading-relaxed focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-y shadow-inner"
+                    placeholder='{\n  "message": "Hello World",\n  "status": "success"\n}'
+                    disabled={isLoading}
+                    spellCheck={false}
+                  />
+                  {formData.responseBody && (
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {formData.responseBody.split('\n').length} lines
+                      </Badge>
+                    </div>
+                  )}
+                </div>
                 {errors.responseBody && (
                   <p className="text-sm text-destructive">
                     {errors.responseBody}

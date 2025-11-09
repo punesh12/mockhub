@@ -19,9 +19,13 @@ import {
   Plus,
   Play,
   TrendingUp,
+  Clock,
+  ExternalLink,
+  ArrowRight,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 
 interface DashboardStats {
   totalMocks: number
@@ -30,12 +34,23 @@ interface DashboardStats {
   activeEndpoints: number
 }
 
+interface RecentActivity {
+  id: string
+  url: string
+  method: string
+  status: number
+  responseTime: number
+  createdAt: string
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
+  const [isLoadingActivity, setIsLoadingActivity] = useState(true)
   const [user, setUser] = useState<{ name: string; email: string } | null>(null)
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
 
   useEffect(() => {
     // Check if user is authenticated
@@ -74,6 +89,23 @@ export default function DashboardPage() {
       .catch((error) => {
         console.error("Error fetching stats:", error)
         setIsLoadingStats(false)
+      })
+
+    // Fetch recent activity
+    fetch("/api/history?limit=5&sortBy=createdAt&sortOrder=desc")
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to fetch recent activity")
+        }
+        return res.json()
+      })
+      .then((data) => {
+        setRecentActivity(data.history || [])
+        setIsLoadingActivity(false)
+      })
+      .catch((error) => {
+        console.error("Error fetching recent activity:", error)
+        setIsLoadingActivity(false)
       })
   }, [router])
 
@@ -168,15 +200,24 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/50">
+                {/* Gradient overlay on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
                   <CardTitle className="text-sm font-medium">
                     {stat.title}
                   </CardTitle>
-                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <motion.div
+                    whileHover={{ rotate: [0, -10, 10, 0] }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Icon className="h-5 w-5 text-primary group-hover:text-primary/80 transition-colors" />
+                  </motion.div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="relative z-10">
                   {isLoadingStats ? (
                     <>
                       <Skeleton className="h-8 w-16 mb-2" />
@@ -184,11 +225,16 @@ export default function DashboardPage() {
                     </>
                   ) : (
                     <>
-                      <div className="text-2xl font-bold">
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: index * 0.1 + 0.2, duration: 0.3 }}
+                        className="text-3xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent"
+                      >
                         {stat.value}
                         {stat.suffix}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      </motion.div>
+                      <p className="text-xs text-muted-foreground mt-2 group-hover:text-foreground/80 transition-colors">
                         {stat.description}
                       </p>
                     </>
@@ -200,46 +246,120 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* Quick Actions */}
+      {/* Recent Activity */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.4 }}
       >
         <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Get started with MockHub</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Link href="/dashboard/mocks/new">
-                <Card className="hover:border-primary transition-colors cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Zap className="h-5 w-5" />
-                      Create Mock API
-                    </CardTitle>
-                    <CardDescription>
-                      Create a new mock endpoint with custom responses
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-              <Link href="/dashboard/test">
-                <Card className="hover:border-primary transition-colors cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Code className="h-5 w-5" />
-                      Test API
-                    </CardTitle>
-                    <CardDescription>
-                      Test any API endpoint and view responses
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-xl">Recent Activity</CardTitle>
+              <CardDescription>
+                Your latest API requests and responses
+              </CardDescription>
             </div>
+            {recentActivity.length > 0 && (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/dashboard/history" className="flex items-center gap-2">
+                  View All
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {isLoadingActivity ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg border">
+                    <Skeleton className="h-6 w-16 rounded" />
+                    <Skeleton className="h-4 flex-1" />
+                    <Skeleton className="h-6 w-12 rounded" />
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-4 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : recentActivity.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <History className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No recent activity</h3>
+                <p className="text-sm text-muted-foreground mb-4 max-w-md">
+                  Start testing APIs to see your request history here
+                </p>
+                <Button asChild variant="outline">
+                  <Link href="/dashboard/test" className="flex items-center gap-2">
+                    <Play className="h-4 w-4" />
+                    Test API
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentActivity.map((activity, index) => {
+                  const isSuccess = activity.status >= 200 && activity.status < 300
+                  const isError = activity.status >= 400
+                  
+                  return (
+                    <motion.div
+                      key={activity.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Link
+                        href={`/dashboard/test?url=${encodeURIComponent(activity.url)}&method=${activity.method}`}
+                      >
+                        <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 hover:border-primary/50 transition-all group cursor-pointer">
+                          {/* Method Badge */}
+                          <Badge
+                            variant="secondary"
+                            className="font-mono text-xs px-2 py-1 shrink-0 w-16 text-center"
+                          >
+                            {activity.method}
+                          </Badge>
+
+                          {/* URL */}
+                          <code className="text-xs font-mono text-muted-foreground truncate flex-1 min-w-0 group-hover:text-foreground transition-colors">
+                            {activity.url.length > 60
+                              ? `${activity.url.substring(0, 60)}...`
+                              : activity.url}
+                          </code>
+
+                          {/* Status Badge */}
+                          <Badge
+                            variant={isSuccess ? "default" : isError ? "destructive" : "secondary"}
+                            className="shrink-0 text-xs px-2 py-1"
+                          >
+                            {activity.status}
+                          </Badge>
+
+                          {/* Response Time */}
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 w-20">
+                            <Clock className="h-3 w-3" />
+                            <span>{activity.responseTime}ms</span>
+                          </div>
+
+                          {/* Timestamp */}
+                          <div className="text-xs text-muted-foreground shrink-0 w-24 text-right">
+                            {new Date(activity.createdAt).toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </div>
+
+                          {/* External Link Icon */}
+                          <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        </div>
+                      </Link>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

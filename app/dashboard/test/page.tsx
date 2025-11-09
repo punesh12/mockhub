@@ -28,7 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Loader2, Send, Copy, Check, Globe, Clock, History, ChevronDown } from "lucide-react"
+import { Loader2, Send, Copy, Check, Globe, Clock, History } from "lucide-react"
 import { motion } from "framer-motion"
 
 const HTTP_METHODS = [
@@ -367,15 +367,6 @@ function TestApiPageContent() {
     return <>{parts}</>
   }
 
-  const getStatusColor = (status?: number) => {
-    if (!status) return "text-muted-foreground"
-    if (status >= 200 && status < 300)
-      return "text-green-600 dark:text-green-400"
-    if (status >= 400 && status < 500)
-      return "text-orange-600 dark:text-orange-400"
-    if (status >= 500) return "text-red-600 dark:text-red-400"
-    return "text-muted-foreground"
-  }
 
   return (
     <div className="space-y-6">
@@ -661,22 +652,39 @@ function TestApiPageContent() {
             ) : response ? (
               <div className="space-y-4">
                 {/* Status and Response Time */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   {response.status && (
-                    <div className="flex items-center gap-2">
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex items-center gap-2"
+                    >
                       <span className="text-sm font-medium">Status:</span>
                       <span
-                        className={`text-sm font-bold ${getStatusColor(response.status)}`}
+                        className={`text-sm font-bold px-2.5 py-1 rounded-md ${
+                          response.status >= 200 && response.status < 300
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : response.status >= 400 && response.status < 500
+                              ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+                              : response.status >= 500
+                                ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                        }`}
                       >
                         {response.status} {response.statusText || ""}
                       </span>
-                    </div>
+                    </motion.div>
                   )}
                   {response.responseTime !== undefined && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.1 }}
+                      className="flex items-center gap-2 text-sm text-muted-foreground px-2.5 py-1 rounded-md bg-muted/50"
+                    >
                       <Clock className="h-4 w-4" />
-                      {response.responseTime}ms
-                    </div>
+                      <span className="font-medium">{response.responseTime}ms</span>
+                    </motion.div>
                   )}
                 </div>
 
@@ -698,10 +706,27 @@ function TestApiPageContent() {
                 {response.headers &&
                   Object.keys(response.headers).length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">
-                        Response Headers
-                      </Label>
-                      <div className="rounded-md border bg-muted/50 p-3 max-h-[150px] overflow-auto">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">
+                          Response Headers
+                        </Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const headersText = Object.entries(response.headers!)
+                              .map(([key, value]) => `${key}: ${value}`)
+                              .join("\n")
+                            navigator.clipboard.writeText(headersText)
+                            toast.success("Headers copied to clipboard")
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy
+                        </Button>
+                      </div>
+                      <div className="rounded-md border-2 bg-muted/30 p-3 max-h-[200px] overflow-auto shadow-inner">
                         <pre className="text-xs font-mono">
                           {Object.entries(response.headers)
                             .map(([key, value]) => `${key}: ${value}`)
@@ -714,9 +739,24 @@ function TestApiPageContent() {
                 {/* Response Body */}
                 {response.data !== undefined && (
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Response Body</Label>
-                    <div className="rounded-md border bg-muted/50 p-3 max-h-[400px] overflow-auto">
-                      <pre className="text-xs font-mono whitespace-pre-wrap">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Response Body</Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const text = formatResponseBody(response.data)
+                          navigator.clipboard.writeText(text)
+                          toast.success("Response body copied to clipboard")
+                        }}
+                        className="h-7 text-xs"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy
+                      </Button>
+                    </div>
+                    <div className="rounded-md border-2 bg-muted/30 p-4 max-h-[500px] overflow-auto shadow-inner">
+                      <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed">
                         {highlightJSON(formatResponseBody(response.data)) || (
                           <span className="text-foreground">
                             {formatResponseBody(response.data)}

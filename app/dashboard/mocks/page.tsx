@@ -6,11 +6,10 @@ import { toast } from "sonner"
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Loader2,
   Plus,
@@ -108,6 +107,7 @@ export default function MocksPage() {
 
   useEffect(() => {
     fetchMocks()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     pagination.page,
     searchQuery,
@@ -229,8 +229,41 @@ export default function MocksPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Skeleton className="h-9 w-48 mb-2" />
+            <Skeleton className="h-5 w-64" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-40" />
+          </div>
+        </div>
+        
+        {/* Cards Skeleton */}
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card key={i} className="border">
+              <CardContent className="p-3 flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-5 w-10 rounded" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Skeleton className="h-4 w-10 rounded" />
+                  <Skeleton className="h-3 flex-1" />
+                  <Skeleton className="h-5 w-5 rounded" />
+                </div>
+                <div className="flex justify-between pt-0.5">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-5 w-5 rounded" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     )
   }
@@ -410,22 +443,36 @@ export default function MocksPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Zap className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No mock APIs yet</h3>
-              <p className="text-muted-foreground text-center mb-6">
-                Create your first mock API to get started
+          <Card className="border-2 border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.1, 1],
+                  rotate: [0, 5, -5, 0]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatDelay: 3
+                }}
+              >
+                <Zap className="h-16 w-16 text-primary/50 mb-6" />
+              </motion.div>
+              <h3 className="text-xl font-semibold mb-2">No mock APIs yet</h3>
+              <p className="text-muted-foreground text-center mb-8 max-w-md">
+                Create your first mock API to get started. Mock APIs allow you to simulate backend responses for testing and development.
               </p>
-              <Button asChild variant="gradient">
-                <Link
-                  href="/dashboard/mocks/new"
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Mock API
-                </Link>
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button asChild variant="gradient" size="lg">
+                  <Link
+                    href="/dashboard/mocks/new"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-5 w-5" />
+                    Create Your First Mock API
+                  </Link>
+                </Button>
+              </motion.div>
             </CardContent>
           </Card>
         </motion.div>
@@ -434,26 +481,31 @@ export default function MocksPage() {
       {/* Mocks List */}
       {mocks.length > 0 && (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {mocks.map((mock, index) => (
               <motion.div
                 key={mock.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
+                whileHover={{ y: -2 }}
+                className="h-full"
               >
-                <Card className="hover:border-primary transition-colors">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{mock.name}</CardTitle>
-                        <CardDescription className="mt-1 font-mono text-xs flex items-center gap-2">
-                          <span className="font-semibold">{mock.method}</span>
-                          <span>/api{mock.endpoint}</span>
-                        </CardDescription>
-                      </div>
+                <Card 
+                  className="hover:border-primary transition-all duration-200 cursor-pointer group relative overflow-hidden border h-full flex flex-col hover:shadow-sm"
+                  onClick={() => handleCardClick(mock.id)}
+                >
+                  {/* Gradient overlay on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                  
+                  <CardContent className="relative z-10 p-3 flex flex-col gap-2">
+                    {/* Top Row: Name + Status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-sm font-semibold group-hover:text-primary transition-colors truncate flex-1 leading-tight">
+                        {mock.name}
+                      </CardTitle>
                       <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0 leading-none ${
                           mock.responseCode === 200
                             ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                             : mock.responseCode >= 400
@@ -464,49 +516,50 @@ export default function MocksPage() {
                         {mock.responseCode}
                       </span>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {/* URL Display */}
-                      <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                        <code className="text-xs font-mono flex-1 truncate">
-                          {typeof window !== "undefined" &&
-                            `${window.location.origin}/api${mock.endpoint}`}
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleCopyUrl(mock, e)
-                          }}
-                          className="h-7 w-7 p-0"
-                          title="Copy URL"
-                        >
-                          {copiedUrl === mock.id ? (
-                            <Check className="h-3 w-3 text-green-600" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">
-                          Created{" "}
-                          {new Date(mock.createdAt).toLocaleDateString()}
-                        </p>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
+
+                    {/* Middle Row: Method + Endpoint + Copy */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-semibold text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase shrink-0">
+                        {mock.method}
+                      </span>
+                      <code className="text-[11px] font-mono text-muted-foreground truncate flex-1 min-w-0">
+                        /api{mock.endpoint}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleCopyUrl(mock, e)
+                        }}
+                        className="h-5 w-5 p-0 hover:bg-primary/10 shrink-0"
+                        title={`Copy: ${typeof window !== "undefined" ? `${window.location.origin}/api${mock.endpoint}` : ""}`}
+                      >
+                        {copiedUrl === mock.id ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Bottom Row: Date + Actions */}
+                    <div className="flex items-center justify-between gap-2 pt-0.5">
+                      <p className="text-[10px] text-muted-foreground leading-none">
+                        {new Date(mock.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </p>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0 hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               onClick={(e) => {
@@ -558,7 +611,6 @@ export default function MocksPage() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -642,18 +694,37 @@ export default function MocksPage() {
 
       {/* No Results */}
       {!isLoading && mocks.length === 0 && hasActiveFilters && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Search className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No results found</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Try adjusting your search query or filters
-            </p>
-            <Button variant="outline" onClick={clearFilters}>
-              Clear all filters
-            </Button>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Card className="border-2 border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatDelay: 2
+                }}
+              >
+                <Search className="h-16 w-16 text-muted-foreground mb-6" />
+              </motion.div>
+              <h3 className="text-xl font-semibold mb-2">No results found</h3>
+              <p className="text-muted-foreground text-center mb-8 max-w-md">
+                We couldn&apos;t find any mocks matching your search criteria. Try adjusting your filters or search query.
+              </p>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button variant="outline" size="lg" onClick={clearFilters}>
+                  <X className="h-4 w-4 mr-2" />
+                  Clear all filters
+                </Button>
+              </motion.div>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
 
       {/* Delete Confirmation Dialog */}
@@ -662,7 +733,7 @@ export default function MocksPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Mock API?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{mockToDelete?.name}"? This
+              Are you sure you want to delete &quot;{mockToDelete?.name}&quot;? This
               action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

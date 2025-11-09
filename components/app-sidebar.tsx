@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { motion } from "framer-motion"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -51,37 +51,37 @@ const navMain: NavItem[] = [
     url: "/dashboard/test",
     icon: Code,
   },
-  {
-    title: "Profile",
-    url: "/dashboard/profile",
-    icon: User,
-  },
+
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const pathname = usePathname()
-
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="border-b px-3 py-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
+              className="data-[slot=sidebar-menu-button]:!p-2 h-auto hover:bg-sidebar-accent"
             >
-              <Link href="/dashboard">
-                <Zap className="h-5 w-5" />
-                <span className="text-base font-semibold">MockHub</span>
+              <Link href="/dashboard" className="flex items-center gap-2.5">
+                <motion.div
+                  whileHover={{ rotate: [0, -10, 10, 0] }}
+                  transition={{ duration: 0.5 }}
+                  className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10"
+                >
+                  <Zap className="h-4 w-4 text-primary" />
+                </motion.div>
+                <span className="text-base font-bold tracking-tight">MockHub</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="px-2 py-3">
         <NavMain items={navMain} />
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t px-2 py-2">
         <NavUser />
       </SidebarFooter>
     </Sidebar>
