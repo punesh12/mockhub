@@ -1,0 +1,215 @@
+# 🧭 Next.js Project Code Conventions & SOLID Guidelines
+
+> **Purpose:**  
+> This document defines the official **code conventions, architecture principles, and style rules** for this Next.js + TypeScript project.  
+> All contributors (including AI tools like Cursor) must follow these guidelines to ensure **consistency, readability, and scalability**.
+
+---
+
+## 🚀 Tech Stack
+
+- **Next.js** — React Framework  
+- **TypeScript** — Strict type safety  
+- **styled-components** — CSS-in-JS styling  
+- **Jest + Testing Library** — Testing  
+- **ESLint + Prettier** — Linting and formatting  
+
+---
+
+## 🧱 Folder Structure
+
+src/
+┣ components/ → Reusable UI components
+┣ features/ → Domain-specific modules (auth, dashboard, etc.)
+┣ hooks/ → Custom React hooks
+┣ utils/ → Pure helper functions
+┣ lib/ → External integrations (API, SDK, etc.)
+┣ types/ → Shared TypeScript interfaces & enums
+┣ constants/ → Static constants and configurations
+┣ styles/ → Global themes and typography
+┣ pages/ → Next.js routes (minimal logic)
+┗ tests/ → Unit and integration tests
+
+
+**Rules:**
+- Each component should have its own folder.
+- Keep `pages/` limited to layout and data-fetching logic only.
+- Co-locate styles (`styles.ts`) and types (`types.ts`) next to the component.
+- Keep helper functions **pure** (no side effects like API calls or DOM manipulation).
+- write the function/ components in ES6 format.
+---
+
+## 🔤 Naming Conventions
+
+| Entity | Convention | Example |
+|--------|-------------|----------|
+| **Components** | `PascalCase` | `UserCard.tsx`, `LoginForm.tsx` |
+| **Files** | `camelCase` | `useAuth.ts`, `formatDate.ts` |
+| **Types & Interfaces** | `PascalCase` | `UserProfile`, `FormValues` |
+| **Constants** | `UPPER_SNAKE_CASE` | `API_BASE_URL`, `MAX_RETRIES` |
+| **Functions & Variables** | `camelCase` | `getUserData()`, `userList` |
+| **Custom Hooks** | `use` prefix + `camelCase` | `useDebounce`, `useAuth` |
+| **Props Interfaces** | `PascalCase` + `Props` suffix | `ButtonProps`, `ModalProps` |
+| **Contexts** | `PascalCase` + `Context` suffix | `AuthContext` |
+| **Styled Components** | `Styled` prefix + `PascalCase` | `StyledButton`, `StyledContainer` |
+
+---
+
+## ⚙️ TypeScript Rules
+
+- `strict` mode enabled in `tsconfig.json`
+- Avoid `any` type — use `unknown` or create proper interfaces
+- Always define `Props` interfaces for components
+- Use `type` for aliases, and `interface` for structured objects
+- Explicitly type all function return values
+- Keep all types in `/src/types` or co-located with the feature
+
+---
+
+## 🧠 SOLID Principles
+
+1. **S — Single Responsibility Principle (SRP)**  
+   Each component, hook, or class should do one thing only.  
+   Avoid mixing logic and UI or multiple data responsibilities.  
+   > ✅ Example: A `Button` component should not manage API calls.
+
+2. **O — Open/Closed Principle (OCP)**  
+   Components should be open for extension (via props, composition, hooks)  
+   but closed for modification — avoid editing existing core logic.
+
+3. **L — Liskov Substitution Principle (LSP)**  
+   Extended or substituted components should behave the same as their base.  
+   Avoid breaking assumptions in derived components or contexts.
+
+4. **I — Interface Segregation Principle (ISP)**  
+   Prefer small, focused interfaces instead of large, general-purpose ones.  
+   > ✅ `ButtonProps` with `{ label, onClick }`  
+   > 🚫 Avoid `ButtonProps` with 10 unrelated properties.
+
+5. **D — Dependency Inversion Principle (DIP)**  
+   High-level components should not depend directly on low-level modules.  
+   Use abstractions (hooks, services, or context) to decouple dependencies.
+
+---
+
+## 🎨 Styling (styled-components)
+
+**Rules:**
+- Prefix all styled components with `Styled`
+- Co-locate style files with component files  
+  e.g. `Button.tsx` and `styles.ts`
+- Use `theme` for color and font variables:
+  ```tsx
+  color: ${({ theme }) => theme.colors.primary};
+Prefix style-only props with $ to prevent leaking to DOM:
+
+const StyledCard = styled.div<{ $isActive?: boolean }>`
+  border: ${({ $isActive }) => ($isActive ? "2px solid blue" : "1px solid #ccc")};
+`;
+
+React & Next.js Best Practices
+
+Use functional components (React.FC) only.
+
+Default export for pages; named exports for components.
+
+Prefer composition over inheritance.
+
+Avoid inline styles and inline functions inside JSX.
+
+Use optional chaining (?.) for safe property access.
+
+Do not return null in string-based conditional rendering.
+
+Example:
+
+{isLoggedIn && <Dashboard />}
+
+
+✅ Good — clear, readable condition
+🚫 Bad — {isLoggedIn ? <Dashboard /> : null}
+
+🧪 Testing Conventions
+
+Tools: Jest + React Testing Library
+
+Rules:
+
+Use descriptive test names (“should render button label correctly”).
+
+Prefer role or text-based selectors instead of data-testid.
+
+One describe block per component.
+
+Keep test files next to component files or inside /tests.
+
+Example:
+
+import { render, screen } from "@testing-library/react";
+import { Button } from "@/components/Button";
+
+describe("Button", () => {
+  it("renders label correctly", () => {
+    render(<Button label="Click" onClick={() => {}} />);
+    expect(screen.getByText("Click")).toBeInTheDocument();
+  });
+});
+
+🧰 ESLint & Prettier Setup
+
+Install:
+
+npm i -D eslint prettier eslint-config-next eslint-plugin-import eslint-plugin-prettier eslint-config-prettier
+
+
+.eslintrc.json
+
+{
+  "extends": ["next/core-web-vitals", "plugin:prettier/recommended"],
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "import/order": ["error", {
+      "groups": ["builtin", "external", "internal"],
+      "alphabetize": { "order": "asc" }
+    }]
+  }
+}
+
+
+.prettierrc
+
+{
+  "singleQuote": true,
+  "semi": true,
+  "trailingComma": "all",
+  "printWidth": 100
+}
+
+🧭 Commit Message Convention
+
+Follow Conventional Commits for clear versioning and changelogs:
+
+Type	Purpose	Example
+feat	New feature	feat: add user profile page
+fix	Bug fix	fix: correct date format logic
+refactor	Code restructuring	refactor: move API logic to utils
+style	Formatting only	style: update button padding
+test	Add/modify tests	test: add tests for useAuth hook
+✅ Summary
+
+This convention enforces:
+
+Clean, scalable project structure
+
+Strict typing & linting
+
+SOLID architecture
+
+Styled-components best practices
+
+Predictable naming & commits
+
+Cursor AI alignment with your team’s code quality
+
+s

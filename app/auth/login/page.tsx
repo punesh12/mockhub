@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ import { motion } from "framer-motion"
 import { ArrowLeft, Loader2, XCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
-export default function LoginPage() {
+const LoginForm = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
@@ -95,6 +95,7 @@ export default function LoginPage() {
 
       // Redirect to the original path or dashboard
       router.push(redirectPath)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setErrors({ submit: "Network error. Please try again." })
       setIsLoading(false)
@@ -216,7 +217,7 @@ export default function LoginPage() {
               </Button>
 
               <div className="text-center text-sm text-muted-foreground">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Link
                   href="/auth/signup"
                   className="text-primary hover:underline font-medium"
@@ -246,3 +247,23 @@ export default function LoginPage() {
     </div>
   )
 }
+
+const LoginPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-primary/5 via-background to-background">
+        <Card className="border-2 shadow-xl w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+export default LoginPage

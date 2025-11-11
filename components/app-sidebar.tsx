@@ -9,7 +9,7 @@ import {
   Code,
   type LucideIcon,
 } from "lucide-react"
-import { MockHubLogo } from "@/components/shared/mockhub-logo"
+import MockHubLogo from "@/components/shared/components/MockHubLogo"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"

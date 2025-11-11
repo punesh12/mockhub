@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-auth"
 import axios, { AxiosError } from "axios"
 import { prisma } from "@/lib/prisma"
+import { ALL_HTTP_METHODS, isValidHttpMethod } from "@/lib/http-methods"
 
 export const POST = withAuth(async (request, user) => {
 
@@ -21,16 +22,7 @@ export const POST = withAuth(async (request, user) => {
     }
 
     // Validate HTTP method
-    const validMethods = [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "HEAD",
-      "OPTIONS",
-    ]
-    if (!validMethods.includes(method.toUpperCase())) {
+    if (!isValidHttpMethod(method) || !ALL_HTTP_METHODS.includes(method.toUpperCase())) {
       return NextResponse.json(
         { error: "Invalid HTTP method" },
         { status: 400 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { withAuthParams } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
+import { isValidHttpMethod, isCommonHttpMethod } from "@/lib/http-methods"
 
 /**
  * GET /api/mocks/[id] - Get a single mock by ID
@@ -68,8 +69,7 @@ export const PUT = withAuthParams(async (request, { id }, user) => {
     }
 
     // Validate HTTP method
-    const validMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-    if (!validMethods.includes(method.toUpperCase())) {
+    if (!isValidHttpMethod(method) || !isCommonHttpMethod(method)) {
       return NextResponse.json(
         { error: "Invalid HTTP method" },
         { status: 400 }

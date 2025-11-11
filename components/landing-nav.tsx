@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { Menu, X } from "lucide-react"
 import { useState, useEffect } from "react"
-import { MockHubLogo } from "@/components/shared/mockhub-logo"
+import MockHubLogo from "@/components/shared/components/MockHubLogo"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export function LandingNav() {

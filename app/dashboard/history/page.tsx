@@ -29,6 +29,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import StatusBadge from "@/components/shared/components/StatusBadge"
+import SearchBar from "@/components/shared/components/SearchBar"
+import StatCard from "@/components/shared/components/StatCard"
+import FilterBadge from "@/components/shared/components/FilterBadge"
+import { getMethodColor } from "@/lib/method-utils"
 import {
   Dialog,
   DialogContent,
@@ -55,7 +60,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import {
   Loader2,
-  Search,
   RefreshCw,
   Clock,
   Globe,
@@ -85,7 +89,7 @@ interface HistoryItem {
   method: string
   status: number
   responseTime: number
-  responseBody?: any
+  responseBody?: unknown
   createdAt: string
 }
 
@@ -104,15 +108,34 @@ interface Statistics {
   errorCount: number
 }
 
+interface ChartResponseTimeData {
+  date: string
+  avgResponseTime: number
+  minResponseTime: number
+  maxResponseTime: number
+}
+
+interface ChartRequestVolumeData {
+  date: string
+  requests: number
+  successful: number
+  failed: number
+}
+
+interface ChartStatusCodeData {
+  status: string
+  count: number
+}
+
 export default function HistoryPage() {
   const router = useRouter()
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [statistics, setStatistics] = useState<Statistics | null>(null)
   const [chartData, setChartData] = useState<{
-    responseTime: any[]
-    requestVolume: any[]
-    statusCode: any[]
+    responseTime: ChartResponseTimeData[]
+    requestVolume: ChartRequestVolumeData[]
+    statusCode: ChartStatusCodeData[]
   } | null>(null)
   const [isLoadingCharts, setIsLoadingCharts] = useState(true)
   const [pagination, setPagination] = useState<Pagination>({
@@ -140,7 +163,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     fetchHistory()
-  }, [
+  }, [// eslint-disable-line react-hooks/exhaustive-deps
     pagination.page,
     methodFilter,
     statusFilter,
@@ -153,7 +176,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     fetchChartData()
-  }, [])
+  }, [])// eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchHistory = async () => {
     setIsLoading(true)
@@ -390,35 +413,13 @@ export default function HistoryPage() {
     return <>{parts}</>
   }
 
-  const formatResponseBody = (data: any): string => {
+  const formatResponseBody = (data: unknown): string => {
     if (!data) return ""
     try {
       return JSON.stringify(data, null, 2)
     } catch {
       return String(data)
     }
-  }
-
-  const getStatusColor = (status: number) => {
-    if (status >= 200 && status < 300)
-      return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-    if (status >= 400 && status < 500)
-      return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
-    if (status >= 500)
-      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-    return "bg-muted text-muted-foreground"
-  }
-
-  const getMethodColor = (method: string) => {
-    const colors: Record<string, string> = {
-      GET: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-      POST: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-      PUT: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-      PATCH:
-        "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-      DELETE: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-    }
-    return colors[method] || "bg-muted text-muted-foreground"
   }
 
   const hasActiveFilters =
@@ -500,55 +501,29 @@ export default function HistoryPage() {
       {/* Statistics Cards */}
       {statistics && (
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Requests
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statistics.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Success Rate
-              </CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {statistics.successRate}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {statistics.successCount} successful
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Avg Response Time
-              </CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {statistics.avgResponseTime}ms
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Errors</CardTitle>
-              <XCircle className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statistics.errorCount}</div>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Total Requests"
+            value={statistics.total}
+            icon={<TrendingUp className="h-4 w-4" />}
+          />
+          <StatCard
+            title="Success Rate"
+            value={`${statistics.successRate}%`}
+            icon={<CheckCircle2 className="h-4 w-4" />}
+            description={`${statistics.successCount} successful`}
+            iconClassName="text-green-600"
+          />
+          <StatCard
+            title="Avg Response Time"
+            value={`${statistics.avgResponseTime}ms`}
+            icon={<Clock className="h-4 w-4" />}
+          />
+          <StatCard
+            title="Errors"
+            value={statistics.errorCount}
+            icon={<XCircle className="h-4 w-4" />}
+            iconClassName="text-red-600"
+          />
         </div>
       )}
 
@@ -613,19 +588,14 @@ export default function HistoryPage() {
             {/* Search */}
             <div className="space-y-2">
               <Label htmlFor="search">Search URL</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search by URL..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    setPagination((prev) => ({ ...prev, page: 1 }))
-                  }}
-                  className="pl-10"
-                />
-              </div>
+              <SearchBar
+                placeholder="Search by URL..."
+                value={searchQuery}
+                onChange={(value) => {
+                  setSearchQuery(value)
+                  setPagination((prev) => ({ ...prev, page: 1 }))
+                }}
+              />
             </div>
 
             {/* Method Filter */}
@@ -741,6 +711,65 @@ export default function HistoryPage() {
         </CardContent>
       </Card>
 
+      {/* Active Filters Badges */}
+      {hasActiveFilters && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-sm text-muted-foreground">Active filters:</span>
+          {methodFilter !== "all" && (
+            <FilterBadge
+              label="Method"
+              value={methodFilter}
+              onRemove={() => {
+                setMethodFilter("all")
+                setPagination((prev) => ({ ...prev, page: 1 }))
+              }}
+            />
+          )}
+          {statusFilter !== "all" && (
+            <FilterBadge
+              label="Status"
+              value={statusFilter}
+              onRemove={() => {
+                setStatusFilter("all")
+                setPagination((prev) => ({ ...prev, page: 1 }))
+              }}
+            />
+          )}
+          {searchQuery && (
+            <FilterBadge
+              label="Search"
+              value={searchQuery}
+              onRemove={() => {
+                setSearchQuery("")
+                setPagination((prev) => ({ ...prev, page: 1 }))
+              }}
+            />
+          )}
+          {startDate && (
+            <FilterBadge
+              label="Start"
+              value={startDate}
+              isDate={true}
+              onRemove={() => {
+                setStartDate("")
+                setPagination((prev) => ({ ...prev, page: 1 }))
+              }}
+            />
+          )}
+          {endDate && (
+            <FilterBadge
+              label="End"
+              value={endDate}
+              isDate={true}
+              onRemove={() => {
+                setEndDate("")
+                setPagination((prev) => ({ ...prev, page: 1 }))
+              }}
+            />
+          )}
+        </div>
+      )}
+
       {/* History Table */}
       {history.length === 0 && !isLoading ? (
         <Card>
@@ -807,9 +836,7 @@ export default function HistoryPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(item.status)}>
-                          {item.status}
-                        </Badge>
+                        <StatusBadge status={item.status} />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -948,9 +975,7 @@ export default function HistoryPage() {
                   <div className="space-y-2">
                     <Label>Status Code</Label>
                     <div>
-                      <Badge className={getStatusColor(selectedItem.status)}>
-                        {selectedItem.status}
-                      </Badge>
+                      <StatusBadge status={selectedItem.status} />
                     </div>
                   </div>
                   <div className="space-y-2">

@@ -30,16 +30,8 @@ import { Loader2, ArrowLeft, Sparkles, Eye, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { generateMockData, type MockTemplate } from "@/lib/mock-generator"
-
-const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-const HTTP_STATUS_CODES = [
-  { value: 200, label: "200 - OK" },
-  { value: 201, label: "201 - Created" },
-  { value: 400, label: "400 - Bad Request" },
-  { value: 401, label: "401 - Unauthorized" },
-  { value: 404, label: "404 - Not Found" },
-  { value: 500, label: "500 - Internal Server Error" },
-]
+import { COMMON_HTTP_METHODS } from "@/lib/http-methods"
+import { HTTP_STATUS_CODES } from "@/lib/http-status-codes"
 
 export default function CreateMockPage() {
   const router = useRouter()
@@ -113,8 +105,9 @@ export default function CreateMockPage() {
         return
       }
 
-      const data = await response.json()
+
       router.push("/dashboard/mocks")
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setErrors({ submit: "Network error. Please try again." })
       setIsLoading(false)
@@ -217,7 +210,7 @@ export default function CreateMockPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {HTTP_METHODS.map((method) => (
+                      {COMMON_HTTP_METHODS.map((method) => (
                         <SelectItem key={method} value={method}>
                           {method}
                         </SelectItem>
@@ -325,7 +318,7 @@ export default function CreateMockPage() {
               <div className="flex gap-3">
                 <Button
                   type="submit"
-                  variant="success"
+                  variant="gradient"
                   disabled={isLoading}
                   className="flex-1"
                 >

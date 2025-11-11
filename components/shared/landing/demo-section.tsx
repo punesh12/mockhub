@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import StatusBadge from "@/components/shared/components/StatusBadge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { motion } from "framer-motion"
 import { Zap, Code, ArrowRight, Send, Loader2, Copy, Check } from "lucide-react"
@@ -186,15 +187,9 @@ export function DemoSection() {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-sm">{mock.name}</h4>
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                            mock.status === 200
-                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                          }`}
-                        >
-                          {mock.status}
-                        </span>
+                        <StatusBadge
+                          status={mock.status}
+                        />
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
@@ -309,16 +304,10 @@ export function DemoSection() {
                       ) : response ? (
                         <>
                           <div className="flex items-center gap-2 mb-3">
-                            <Badge
-                              variant={
-                                response.status >= 200 && response.status < 300
-                                  ? "default"
-                                  : "destructive"
-                              }
-                              className="text-xs"
-                            >
-                              {response.status} {response.statusText}
-                            </Badge>
+                            <StatusBadge
+                              status={response.status}
+                              statusText={response.statusText}
+                            />
                             <span className="text-muted-foreground text-xs">
                               {response.responseTime}ms
                             </span>

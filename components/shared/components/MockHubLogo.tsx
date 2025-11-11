@@ -41,7 +41,7 @@ interface MockHubLogoProps {
   animated?: boolean
 }
 
-export function MockHubLogo({
+const MockHubLogo = ({
   showText = true,
   size = "default",
   clickable = true,
@@ -49,7 +49,7 @@ export function MockHubLogo({
   className,
   textClassName,
   animated = true,
-}: MockHubLogoProps) {
+}: MockHubLogoProps) => {
   const sizeClasses = {
     sm: {
       icon: "h-6 w-6",
@@ -128,4 +128,6 @@ export function MockHubLogo({
     </motion.div>
   )
 }
+
+export default MockHubLogo
 

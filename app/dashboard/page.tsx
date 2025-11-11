@@ -26,6 +26,9 @@ import {
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import StatusBadge from "@/components/shared/components/StatusBadge"
+import { getMethodColor } from "@/lib/method-utils"
+import { cn } from "@/lib/utils"
 
 interface DashboardStats {
   totalMocks: number
@@ -300,9 +303,6 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-2">
                 {recentActivity.map((activity, index) => {
-                  const isSuccess = activity.status >= 200 && activity.status < 300
-                  const isError = activity.status >= 400
-                  
                   return (
                     <motion.div
                       key={activity.id}
@@ -316,8 +316,10 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 hover:border-primary/50 transition-all group cursor-pointer">
                           {/* Method Badge */}
                           <Badge
-                            variant="secondary"
-                            className="font-mono text-xs px-2 py-1 shrink-0 w-16 text-center"
+                            className={cn(
+                              "font-mono text-xs px-2 py-1 shrink-0 w-16 text-center",
+                              getMethodColor(activity.method)
+                            )}
                           >
                             {activity.method}
                           </Badge>
@@ -330,12 +332,10 @@ export default function DashboardPage() {
                           </code>
 
                           {/* Status Badge */}
-                          <Badge
-                            variant={isSuccess ? "default" : isError ? "destructive" : "secondary"}
-                            className="shrink-0 text-xs px-2 py-1"
-                          >
-                            {activity.status}
-                          </Badge>
+                          <StatusBadge
+                            status={activity.status}
+                            className="shrink-0"
+                          />
 
                           {/* Response Time */}
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 w-20">

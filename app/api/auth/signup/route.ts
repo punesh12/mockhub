@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
     try {
       // Create user in database - password is optional (Supabase handles auth)
       const user = await prisma.user.create({
-        // @ts-expect-error - password is optional in schema but Prisma types may not reflect this correctly
         data: {
           id, // Use Supabase Auth user ID from frontend
           name,

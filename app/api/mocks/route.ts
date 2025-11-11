@@ -1,6 +1,8 @@
 import { withAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
+import { isValidHttpMethod, isCommonHttpMethod } from "@/lib/http-methods"
 
 export const GET = withAuth(async (request, user) => {
 
@@ -16,7 +18,7 @@ export const GET = withAuth(async (request, user) => {
     const sortOrder = searchParams.get("sortOrder") || "desc"
 
     // Build where clause
-    const where: any = {
+    const where: Prisma.MockApiWhereInput = {
       userId: user.id,
     }
 
@@ -39,13 +41,14 @@ export const GET = withAuth(async (request, user) => {
     }
 
     // Build orderBy clause
-    const orderBy: any = {}
+    const orderBy: Prisma.MockApiOrderByWithRelationInput = {}
+    const sortOrderValue = sortOrder === "asc" ? "asc" : "desc"
     if (sortBy === "name") {
-      orderBy.name = sortOrder
+      orderBy.name = sortOrderValue
     } else if (sortBy === "method") {
-      orderBy.method = sortOrder
+      orderBy.method = sortOrderValue
     } else if (sortBy === "createdAt") {
-      orderBy.createdAt = sortOrder
+      orderBy.createdAt = sortOrderValue
     } else {
       orderBy.createdAt = "desc" // Default
     }
@@ -179,14 +182,18 @@ export const POST = withAuth(async (request, user) => {
             "✅ Successfully migrated user data to new ID:",
             dbUser.id
           )
-        } catch (updateError: any) {
+        } catch (updateError: unknown) {
           console.error("❌ Error migrating user data:", updateError)
+          const errorMessage =
+            updateError instanceof Error
+              ? updateError.message
+              : "Unknown error"
           return NextResponse.json(
             {
               error: "Account migration failed. Please contact support.",
               details:
                 process.env.NODE_ENV === "development"
-                  ? `Error: ${updateError.message || "Unknown error"}`
+                  ? `Error: ${errorMessage}`
                   : undefined,
             },
             { status: 500 }
@@ -205,16 +212,24 @@ export const POST = withAuth(async (request, user) => {
             },
           })
           console.log("✅ Created user in database:", dbUser.id)
-        } catch (createError: any) {
+        } catch (createError: unknown) {
           console.error("❌ Error creating user in database:")
-          console.error("  Error code:", createError.code)
-          console.error("  Error message:", createError.message)
+          const errorCode =
+            createError && typeof createError === "object" && "code" in createError
+              ? String(createError.code)
+              : undefined
+          const errorMessage =
+            createError instanceof Error
+              ? createError.message
+              : "Unknown error"
+          console.error("  Error code:", errorCode)
+          console.error("  Error message:", errorMessage)
           console.error("  User ID:", user.id)
           console.error("  User email:", user.email)
           console.error("  Full error:", createError)
 
           // If creation fails, return error
-          if (createError.code === "P2002") {
+          if (errorCode === "P2002") {
             // Unique constraint violation - user might have been created by another request
             console.log(
               "  → User might already exist, trying to fetch again..."
@@ -228,21 +243,21 @@ export const POST = withAuth(async (request, user) => {
                   error: "Failed to create user record. Please try again.",
                   details:
                     process.env.NODE_ENV === "development"
-                      ? createError.message
+                      ? errorMessage
                       : undefined,
                 },
                 { status: 500 }
               )
             }
             console.log("  ✅ Found existing user after retry")
-          } else if (createError.code === "P2003") {
+          } else if (errorCode === "P2003") {
             // Foreign key constraint - shouldn't happen for User creation
             return NextResponse.json(
               {
                 error: "Database constraint error. Please contact support.",
                 details:
                   process.env.NODE_ENV === "development"
-                    ? createError.message
+                    ? errorMessage
                     : undefined,
               },
               { status: 500 }
@@ -253,7 +268,7 @@ export const POST = withAuth(async (request, user) => {
                 error: "Failed to create user record. Please try again.",
                 details:
                   process.env.NODE_ENV === "development"
-                    ? `${createError.code || "Unknown"}: ${createError.message || "Unknown error"}`
+                    ? `${errorCode || "Unknown"}: ${errorMessage}`
                     : undefined,
               },
               { status: 500 }
@@ -283,8 +298,7 @@ export const POST = withAuth(async (request, user) => {
     }
 
     // Validate HTTP method
-    const validMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-    if (!validMethods.includes(method.toUpperCase())) {
+    if (!isValidHttpMethod(method) || !isCommonHttpMethod(method)) {
       return NextResponse.json(
         { error: "Invalid HTTP method" },
         { status: 400 }

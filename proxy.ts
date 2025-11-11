@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { isPublicRoute, isPrivateRoute } from "./lib/routes"
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const accessToken = request.cookies.get("sb-access-token")?.value
   const isAuthenticated = !!accessToken
@@ -45,3 +45,4 @@ export const config = {
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }
+

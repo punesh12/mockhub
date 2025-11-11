@@ -1,36 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
   Card,
   CardContent,
-  CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Loader2,
-  Plus,
   Zap,
-  Search,
-  Edit,
-  Trash2,
-  Copy,
-  Check,
-  ExternalLink,
-  MoreVertical,
-  Filter,
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  X,
+  Plus,
   Download,
+  Search,
 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -38,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,14 +35,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { exportToJSON, formatMockForExport } from "@/lib/export-utils"
+import SearchBar from "@/components/shared/components/SearchBar"
+import FilterBadge from "@/components/shared/components/FilterBadge"
+import MockCard, { type MockCardData } from "@/components/shared/components/MockCard"
+import Pagination from "@/components/shared/components/Pagination"
+import { Filter, ArrowUpDown, X } from "lucide-react"
 
 interface Mock {
   id: string
@@ -93,17 +77,12 @@ export default function MocksPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [mockToDelete, setMockToDelete] = useState<Mock | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
+  const mocksRef = useRef<Mock[]>([])
 
-  // Debounce search input
+  // Debounce search input - handled by SearchBar component
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchQuery(searchInput)
-      setPagination((prev) => ({ ...prev, page: 1 }))
-    }, 500) // 500ms debounce
-
-    return () => clearTimeout(timer)
-  }, [searchInput])
+    setPagination((prev) => ({ ...prev, page: 1 }))
+  }, [searchQuery])
 
   useEffect(() => {
     fetchMocks()
@@ -138,7 +117,9 @@ export default function MocksPage() {
         throw new Error("Failed to fetch mocks")
       }
       const data = await response.json()
-      setMocks(data.mocks || [])
+      const mocksData = data.mocks || []
+      setMocks(mocksData)
+      mocksRef.current = mocksData
       if (data.pagination) {
         setPagination(data.pagination)
       }
@@ -150,38 +131,60 @@ export default function MocksPage() {
     }
   }
 
-  const handleSearchInputChange = (value: string) => {
+  const handleSearchInputChange = useCallback((value: string) => {
     setSearchInput(value) // Update input immediately for responsive UI
-  }
+  }, [])
 
-  const handleFilterChange = (
-    filterType: "method" | "statusCode",
-    value: string
-  ) => {
-    if (filterType === "method") {
-      setMethodFilter(value)
-    } else {
-      setStatusCodeFilter(value)
-    }
-    setPagination((prev) => ({ ...prev, page: 1 })) // Reset to page 1 on filter change
-  }
+  const handleSearchQueryChange = useCallback((value: string) => {
+    setSearchQuery(value)
+  }, [])
 
-  const clearFilters = () => {
+  const handleMethodFilterChange = useCallback((value: string) => {
+    setMethodFilter(value)
+    setPagination((prev) => ({ ...prev, page: 1 }))
+  }, [])
+
+  const handleStatusCodeFilterChange = useCallback((value: string) => {
+    setStatusCodeFilter(value)
+    setPagination((prev) => ({ ...prev, page: 1 }))
+  }, [])
+
+  const handleSortChange = useCallback((by: string, order: string) => {
+    setSortBy(by)
+    setSortOrder(order)
+    setPagination((prev) => ({ ...prev, page: 1 }))
+  }, [])
+
+  const clearFilters = useCallback(() => {
     setMethodFilter("")
     setStatusCodeFilter("")
     setSearchInput("")
     setSearchQuery("")
     setPagination((prev) => ({ ...prev, page: 1 }))
-  }
+  }, [])
 
-  const hasActiveFilters =
-    methodFilter || statusCodeFilter || searchQuery || searchInput
+  const hasActiveFilters = useMemo(
+    () => !!(methodFilter || statusCodeFilter || searchQuery || searchInput),
+    [methodFilter, statusCodeFilter, searchQuery, searchInput]
+  )
 
-  const handleDeleteClick = (mock: Mock, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setMockToDelete(mock)
+  const handlePageChange = useCallback((page: number) => {
+    setPagination((prev) => ({ ...prev, page }))
+  }, [])
+
+  const handleExport = useCallback(() => {
+    const formattedData = mocksRef.current.map(formatMockForExport)
+    exportToJSON(
+      formattedData,
+      `mocks-${new Date().toISOString().split("T")[0]}`
+    )
+    toast.success("Mocks exported to JSON")
+  }, [])
+
+  const handleDeleteClick = useCallback((mock: MockCardData) => {
+    setMockToDelete(mock as Mock)
     setDeleteDialogOpen(true)
-  }
+  }, [])
 
   const handleDeleteConfirm = async () => {
     if (!mockToDelete) return
@@ -197,7 +200,7 @@ export default function MocksPage() {
       }
 
       // Refresh the list
-      fetchMocks()
+      await fetchMocks()
       setDeleteDialogOpen(false)
       setMockToDelete(null)
       toast.success("Mock API deleted successfully")
@@ -209,23 +212,9 @@ export default function MocksPage() {
     }
   }
 
-  const handleCopyUrl = async (mock: Mock, e: React.MouseEvent) => {
-    e.stopPropagation()
-    const url = `${window.location.origin}/api${mock.endpoint}`
-    await navigator.clipboard.writeText(url)
-    setCopiedUrl(mock.id)
-    setTimeout(() => setCopiedUrl(null), 2000)
-  }
-
-  const handleOpenUrl = (mock: Mock, e: React.MouseEvent) => {
-    e.stopPropagation()
-    const url = `${window.location.origin}/api${mock.endpoint}`
-    window.open(url, "_blank")
-  }
-
-  const handleCardClick = (mockId: string) => {
+  const handleCardEdit = useCallback((mockId: string) => {
     router.push(`/dashboard/mocks/${mockId}/edit`)
-  }
+  }, [router])
 
   if (isLoading) {
     return (
@@ -282,14 +271,7 @@ export default function MocksPage() {
           {mocks.length > 0 && (
             <Button
               variant="outline"
-              onClick={() => {
-                const formattedData = mocks.map(formatMockForExport)
-                exportToJSON(
-                  formattedData,
-                  `mocks-${new Date().toISOString().split("T")[0]}`
-                )
-                toast.success("Mocks exported to JSON")
-              }}
+              onClick={handleExport}
             >
               <Download className="h-4 w-4 mr-2" />
               Export JSON
@@ -312,22 +294,20 @@ export default function MocksPage() {
         <div className="space-y-3 sm:space-y-4">
           <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center">
             {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search mocks by name or endpoint..."
-                value={searchInput}
-                onChange={(e) => handleSearchInputChange(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchBar
+              placeholder="Search mocks by name or endpoint..."
+              value={searchInput}
+              onChange={handleSearchInputChange}
+              onDebounce={handleSearchQueryChange}
+              debounceMs={500}
+            />
 
             {/* Filters */}
             <div className="flex gap-2">
               <Select
                 value={methodFilter || "all"}
                 onValueChange={(value) =>
-                  handleFilterChange("method", value === "all" ? "" : value)
+                  handleMethodFilterChange(value === "all" ? "" : value)
                 }
               >
                 <SelectTrigger className="w-[140px]">
@@ -347,7 +327,7 @@ export default function MocksPage() {
               <Select
                 value={statusCodeFilter || "all"}
                 onValueChange={(value) =>
-                  handleFilterChange("statusCode", value === "all" ? "" : value)
+                  handleStatusCodeFilterChange(value === "all" ? "" : value)
                 }
               >
                 <SelectTrigger className="w-[140px]">
@@ -368,9 +348,7 @@ export default function MocksPage() {
                 value={`${sortBy}-${sortOrder}`}
                 onValueChange={(value) => {
                   const [by, order] = value.split("-")
-                  setSortBy(by)
-                  setSortOrder(order)
-                  setPagination((prev) => ({ ...prev, page: 1 }))
+                  handleSortChange(by, order)
                 }}
               >
                 <SelectTrigger className="w-[180px]">
@@ -403,34 +381,28 @@ export default function MocksPage() {
                 Active filters:
               </span>
               {methodFilter && (
-                <Badge variant="secondary" className="gap-1">
-                  Method: {methodFilter}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => handleFilterChange("method", "")}
-                  />
-                </Badge>
+                <FilterBadge
+                  label="Method"
+                  value={methodFilter}
+                  onRemove={() => handleMethodFilterChange("")}
+                />
               )}
               {statusCodeFilter && (
-                <Badge variant="secondary" className="gap-1">
-                  Status: {statusCodeFilter}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => handleFilterChange("statusCode", "")}
-                  />
-                </Badge>
+                <FilterBadge
+                  label="Status"
+                  value={statusCodeFilter}
+                  onRemove={() => handleStatusCodeFilterChange("")}
+                />
               )}
               {searchQuery && (
-                <Badge variant="secondary" className="gap-1">
-                  Search: {searchQuery}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => {
-                      setSearchInput("")
-                      setSearchQuery("")
-                    }}
-                  />
-                </Badge>
+                <FilterBadge
+                  label="Search"
+                  value={searchQuery}
+                  onRemove={() => {
+                    setSearchInput("")
+                    setSearchQuery("")
+                  }}
+                />
               )}
             </div>
           )}
@@ -483,212 +455,26 @@ export default function MocksPage() {
         <>
           <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {mocks.map((mock, index) => (
-              <motion.div
+              <MockCard
                 key={mock.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                whileHover={{ y: -2 }}
-                className="h-full"
-              >
-                <Card 
-                  className="hover:border-primary transition-all duration-200 cursor-pointer group relative overflow-hidden border h-full flex flex-col hover:shadow-sm"
-                  onClick={() => handleCardClick(mock.id)}
-                >
-                  {/* Gradient overlay on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                  
-                  <CardContent className="relative z-10 p-3 flex flex-col gap-2">
-                    {/* Top Row: Name + Status */}
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-sm font-semibold group-hover:text-primary transition-colors truncate flex-1 leading-tight">
-                        {mock.name}
-                      </CardTitle>
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0 leading-none ${
-                          mock.responseCode === 200
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : mock.responseCode >= 400
-                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                        }`}
-                      >
-                        {mock.responseCode}
-                      </span>
-                    </div>
-
-                    {/* Middle Row: Method + Endpoint + Copy */}
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-semibold text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase shrink-0">
-                        {mock.method}
-                      </span>
-                      <code className="text-[11px] font-mono text-muted-foreground truncate flex-1 min-w-0">
-                        /api{mock.endpoint}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleCopyUrl(mock, e)
-                        }}
-                        className="h-5 w-5 p-0 hover:bg-primary/10 shrink-0"
-                        title={`Copy: ${typeof window !== "undefined" ? `${window.location.origin}/api${mock.endpoint}` : ""}`}
-                      >
-                        {copiedUrl === mock.id ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Bottom Row: Date + Actions */}
-                    <div className="flex items-center justify-between gap-2 pt-0.5">
-                      <p className="text-[10px] text-muted-foreground leading-none">
-                        {new Date(mock.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </p>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 w-5 p-0 hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="h-3.5 w-3.5" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(`/dashboard/mocks/${mock.id}/edit`)
-                              }}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleCopyUrl(mock, e)
-                              }}
-                            >
-                              {copiedUrl === mock.id ? (
-                                <>
-                                  <Check className="h-4 w-4 mr-2 text-green-600" />
-                                  Copied!
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  Copy URL
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleOpenUrl(mock, e)
-                              }}
-                            >
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              Open in new tab
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDeleteClick(mock, e)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                mock={mock as MockCardData}
+                index={index}
+                onDelete={handleDeleteClick}
+                onEdit={handleCardEdit}
+              />
             ))}
           </div>
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
-                of {pagination.total} mocks
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
-                  }
-                  disabled={pagination.page === 1 || isLoading}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from(
-                    { length: Math.min(5, pagination.totalPages) },
-                    (_, i) => {
-                      let pageNum: number
-                      if (pagination.totalPages <= 5) {
-                        pageNum = i + 1
-                      } else if (pagination.page <= 3) {
-                        pageNum = i + 1
-                      } else if (pagination.page >= pagination.totalPages - 2) {
-                        pageNum = pagination.totalPages - 4 + i
-                      } else {
-                        pageNum = pagination.page - 2 + i
-                      }
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={
-                            pagination.page === pageNum ? "default" : "outline"
-                          }
-                          size="sm"
-                          onClick={() =>
-                            setPagination((prev) => ({
-                              ...prev,
-                              page: pageNum,
-                            }))
-                          }
-                          disabled={isLoading}
-                          className="w-10"
-                        >
-                          {pageNum}
-                        </Button>
-                      )
-                    }
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-                  }
-                  disabled={
-                    pagination.page === pagination.totalPages || isLoading
-                  }
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            limit={pagination.limit}
+            isLoading={isLoading}
+            onPageChange={handlePageChange}
+            itemLabel="mocks"
+          />
         </>
       )}
 

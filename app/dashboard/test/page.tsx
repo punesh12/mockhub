@@ -28,18 +28,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Loader2, Send, Copy, Check, Globe, Clock, History } from "lucide-react"
+import { Loader2, Send, Globe, Clock, History } from "lucide-react"
 import { motion } from "framer-motion"
-
-const HTTP_METHODS = [
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-  "HEAD",
-  "OPTIONS",
-]
+import StatusBadge from "@/components/shared/components/StatusBadge"
+import CopyButton from "@/components/shared/components/CopyButton"
+import { ALL_HTTP_METHODS } from "@/lib/http-methods"
 
 interface Header {
   key: string
@@ -56,13 +49,22 @@ interface ApiResponse {
   status?: number
   statusText?: string
   headers?: Record<string, string>
-  data?: any
+  data?: unknown
   responseTime?: number
   error?: {
     message: string
     code?: string
-    details?: any
+    details?: unknown
   }
+}
+
+interface HistoryItem {
+  id: string
+  url: string
+  method: string
+  status: number
+  responseTime: number
+  createdAt: string
 }
 
 function TestApiPageContent() {
@@ -76,9 +78,8 @@ function TestApiPageContent() {
   const [requestBody, setRequestBody] = useState("")
   const [response, setResponse] = useState<ApiResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [saveToHistory, setSaveToHistory] = useState(true)
-  const [historyItems, setHistoryItems] = useState<any[]>([])
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
 
   // Pre-fill from query params (for retry functionality)
@@ -114,7 +115,7 @@ function TestApiPageContent() {
     }
   }
 
-  const handleLoadFromHistory = (item: any) => {
+  const handleLoadFromHistory = (item: HistoryItem) => {
     setUrl(item.url)
     setMethod(item.method)
     // Note: We don't have headers/query params/body stored in history
@@ -223,16 +224,8 @@ function TestApiPageContent() {
     }
   }
 
-  const handleCopyResponse = () => {
-    if (!response) return
 
-    const textToCopy = JSON.stringify(response, null, 2)
-    navigator.clipboard.writeText(textToCopy)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const formatResponseBody = (data: any): string => {
+  const formatResponseBody = (data: unknown): string => {
     if (!data) return ""
     try {
       return JSON.stringify(data, null, 2)
@@ -402,7 +395,7 @@ function TestApiPageContent() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {HTTP_METHODS.map((m) => (
+                        {ALL_HTTP_METHODS.map((m) => (
                           <SelectItem key={m} value={m}>
                             {m}
                           </SelectItem>
@@ -624,23 +617,12 @@ function TestApiPageContent() {
                 <CardDescription>API response will appear here</CardDescription>
               </div>
               {response && (
-                <Button
-                  variant={copied ? "success" : "outline"}
+                <CopyButton
+                  text={JSON.stringify(response, null, 2)}
                   size="sm"
-                  onClick={handleCopyResponse}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy
-                    </>
-                  )}
-                </Button>
+                  variant="outline"
+                  showText
+                />
               )}
             </div>
           </CardHeader>
@@ -660,19 +642,10 @@ function TestApiPageContent() {
                       className="flex items-center gap-2"
                     >
                       <span className="text-sm font-medium">Status:</span>
-                      <span
-                        className={`text-sm font-bold px-2.5 py-1 rounded-md ${
-                          response.status >= 200 && response.status < 300
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : response.status >= 400 && response.status < 500
-                              ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
-                              : response.status >= 500
-                                ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                        }`}
-                      >
-                        {response.status} {response.statusText || ""}
-                      </span>
+                      <StatusBadge
+                        status={response.status}
+                        statusText={response.statusText}
+                      />
                     </motion.div>
                   )}
                   {response.responseTime !== undefined && (
@@ -694,7 +667,7 @@ function TestApiPageContent() {
                     <p className="text-sm font-medium text-destructive mb-2">
                       {response.error.message}
                     </p>
-                    {response.error.details && (
+                    {response.error.details !== undefined && (
                       <pre className="text-xs text-muted-foreground overflow-auto">
                         {JSON.stringify(response.error.details, null, 2)}
                       </pre>
@@ -710,21 +683,16 @@ function TestApiPageContent() {
                         <Label className="text-sm font-medium">
                           Response Headers
                         </Label>
-                        <Button
-                          variant="ghost"
+                        <CopyButton
+                          text={Object.entries(response.headers!)
+                            .map(([key, value]) => `${key}: ${value}`)
+                            .join("\n")}
                           size="sm"
-                          onClick={() => {
-                            const headersText = Object.entries(response.headers!)
-                              .map(([key, value]) => `${key}: ${value}`)
-                              .join("\n")
-                            navigator.clipboard.writeText(headersText)
-                            toast.success("Headers copied to clipboard")
-                          }}
+                          variant="ghost"
+                          showText
                           className="h-7 text-xs"
-                        >
-                          <Copy className="h-3 w-3 mr-1" />
-                          Copy
-                        </Button>
+                          onCopy={() => toast.success("Headers copied to clipboard")}
+                        />
                       </div>
                       <div className="rounded-md border-2 bg-muted/30 p-3 max-h-[200px] overflow-auto shadow-inner">
                         <pre className="text-xs font-mono">
@@ -741,19 +709,14 @@ function TestApiPageContent() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium">Response Body</Label>
-                      <Button
-                        variant="ghost"
+                      <CopyButton
+                        text={formatResponseBody(response.data)}
                         size="sm"
-                        onClick={() => {
-                          const text = formatResponseBody(response.data)
-                          navigator.clipboard.writeText(text)
-                          toast.success("Response body copied to clipboard")
-                        }}
+                        variant="ghost"
+                        showText
                         className="h-7 text-xs"
-                      >
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copy
-                      </Button>
+                        onCopy={() => toast.success("Response body copied to clipboard")}
+                      />
                     </div>
                     <div className="rounded-md border-2 bg-muted/30 p-4 max-h-[500px] overflow-auto shadow-inner">
                       <pre className="text-xs font-mono whitespace-pre-wrap leading-relaxed">
