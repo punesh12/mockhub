@@ -1,19 +1,19 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
   LayoutDashboard,
   Zap,
   History,
   Code,
-  User,
   type LucideIcon,
 } from "lucide-react"
-import Link from "next/link"
-import { motion } from "framer-motion"
+import { MockHubLogo } from "@/components/shared/mockhub-logo"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
+import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
   SidebarContent,
@@ -64,15 +64,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-2 h-auto hover:bg-sidebar-accent"
             >
-              <Link href="/dashboard" className="flex items-center gap-2.5">
-                <motion.div
-                  whileHover={{ rotate: [0, -10, 10, 0] }}
-                  transition={{ duration: 0.5 }}
-                  className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10"
-                >
-                  <Zap className="h-4 w-4 text-primary" />
-                </motion.div>
-                <span className="text-base font-bold tracking-tight">MockHub</span>
+              <Link href="/dashboard">
+                <MockHubLogo size="default" clickable={false} />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -81,7 +74,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent className="px-2 py-3">
         <NavMain items={navMain} />
       </SidebarContent>
-      <SidebarFooter className="border-t px-2 py-2">
+      <SidebarFooter className="border-t px-2 py-2 space-y-2">
+        <div className="flex items-center justify-end px-2">
+          <ThemeToggle />
+        </div>
         <NavUser />
       </SidebarFooter>
     </Sidebar>

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
 import { withAuth } from "@/lib/api-auth"
+import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server"
 
 export const GET = withAuth(async (request, user) => {
 

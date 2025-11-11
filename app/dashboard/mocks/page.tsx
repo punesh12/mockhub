@@ -269,9 +269,9 @@ export default function MocksPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mock APIs</h1>
           <p className="text-muted-foreground mt-1">
@@ -309,8 +309,8 @@ export default function MocksPage() {
 
       {/* Filters and Search */}
       {(pagination.total > 0 || hasActiveFilters) && (
-        <div className="space-y-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center">
             {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -481,7 +481,7 @@ export default function MocksPage() {
       {/* Mocks List */}
       {mocks.length > 0 && (
         <>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {mocks.map((mock, index) => (
               <motion.div
                 key={mock.id}
