@@ -42,21 +42,26 @@ export const PUT = withAuth(async (request, user, { params }) => {
     }
 
     const body = await request.json()
-    const { role } = body
 
-    // Validate request body
-    if (!role || (role !== "admin" && role !== "member")) {
+    // Validate input using Yup validation
+    const { validateAndParse, getValidationErrorMessage, updateMemberRoleSchema } = await import("@/lib/validation")
+    const validationResult = await validateAndParse(updateMemberRoleSchema, body)
+
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Role must be 'admin' or 'member'" },
+        { error: getValidationErrorMessage(validationResult.error) },
         { status: 400 }
       )
     }
 
+    const { role } = validationResult.data
+
     // Get member record
+    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const member = await prisma.organizationMember.findUnique({
       where: {
         id: memberId,
-        organizationId: id,
+        organizationId: organizationId,
       },
       include: {
         organization: {
@@ -91,6 +96,7 @@ export const PUT = withAuth(async (request, user, { params }) => {
     }
 
     // Update member role
+    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const updatedMember = await prisma.organizationMember.update({
       where: {
         id: memberId,
@@ -157,6 +163,7 @@ export const DELETE = withAuth(async (request, user, { params }) => {
     const organizationId = orgLookup.id
 
     // Get member record
+    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const member = await prisma.organizationMember.findUnique({
       where: {
         id: memberId,
@@ -202,6 +209,7 @@ export const DELETE = withAuth(async (request, user, { params }) => {
     }
 
     // Delete member record
+    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     await prisma.organizationMember.delete({
       where: {
         id: memberId,

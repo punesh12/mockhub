@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 export const GET = withAuth(async (request, user) => {
 
@@ -29,9 +30,15 @@ export const GET = withAuth(async (request, user) => {
             password: "",
           },
         })
-      } catch (createError: any) {
+      } catch (createError: unknown) {
         console.error("Error creating user in database:", createError)
-        if (createError.code !== "P2002") {
+        const errorCode =
+          createError &&
+          typeof createError === "object" &&
+          "code" in createError
+            ? String(createError.code)
+            : undefined
+        if (errorCode !== "P2002") {
           return NextResponse.json(
             { error: "Failed to create user record" },
             { status: 500 }
@@ -63,7 +70,7 @@ export const GET = withAuth(async (request, user) => {
     const endDate = searchParams.get("endDate")
 
     // Build where clause
-    const where: any = {
+    const where: Prisma.RequestHistoryWhereInput = {
       userId: user.id,
     }
 
@@ -97,11 +104,25 @@ export const GET = withAuth(async (request, user) => {
     }
 
     // Build orderBy
-    const orderBy: any = {}
-    orderBy[sortBy] = sortOrder
+    const orderBy: Prisma.RequestHistoryOrderByWithRelationInput = {}
+    if (sortBy === "createdAt") {
+      orderBy.createdAt = sortOrder === "asc" ? "asc" : "desc"
+    } else if (sortBy === "method") {
+      orderBy.method = sortOrder === "asc" ? "asc" : "desc"
+    } else if (sortBy === "status") {
+      orderBy.status = sortOrder === "asc" ? "asc" : "desc"
+    } else if (sortBy === "responseTime") {
+      orderBy.responseTime = sortOrder === "asc" ? "asc" : "desc"
+    } else {
+      orderBy.createdAt = "desc" // Default
+    }
 
     // Fetch history with pagination
-    const [history, total, allHistoryForStats] = await Promise.all([
+    // Only calculate statistics if no filters are applied (for performance)
+    const shouldCalculateStats =
+      !method && status === null && !search && !startDate && !endDate
+
+    const [history, total, statsData] = await Promise.all([
       prisma.requestHistory.findMany({
         where,
         orderBy,
@@ -118,35 +139,38 @@ export const GET = withAuth(async (request, user) => {
         },
       }),
       prisma.requestHistory.count({ where }),
-      // Get all history for statistics (only if no filters applied for performance)
-      !method && status === null && !search && !startDate && !endDate
-        ? prisma.requestHistory.findMany({
-            where: { userId: user.id },
-            select: {
-              status: true,
-              responseTime: true,
-            },
-          })
-        : Promise.resolve([]),
+      // Use aggregation queries for statistics (much faster than fetching all records)
+      shouldCalculateStats
+        ? Promise.all([
+            prisma.requestHistory.aggregate({
+              where: { userId: user.id },
+              _count: { id: true },
+              _avg: { responseTime: true },
+            }),
+            prisma.requestHistory.count({
+              where: {
+                userId: user.id,
+                status: { gte: 200, lt: 300 },
+              },
+            }),
+          ])
+        : Promise.resolve([null, null]),
     ])
 
-    // Calculate statistics
+    // Calculate statistics using aggregated data
     let statistics = null
-    if (allHistoryForStats.length > 0) {
-      const successCount = allHistoryForStats.filter(
-        (h) => h.status >= 200 && h.status < 300
-      ).length
-      const successRate = (successCount / allHistoryForStats.length) * 100
-      const avgResponseTime =
-        allHistoryForStats.reduce((sum, h) => sum + h.responseTime, 0) /
-        allHistoryForStats.length
+    if (shouldCalculateStats && statsData[0] && statsData[1] !== null) {
+      const [aggregate, successCount] = statsData
+      const totalCount = aggregate._count.id
+      const avgResponseTime = aggregate._avg.responseTime || 0
+      const successRate = totalCount > 0 ? (successCount / totalCount) * 100 : 0
 
       statistics = {
-        total: allHistoryForStats.length,
+        total: totalCount,
         successRate: Math.round(successRate * 10) / 10, // Round to 1 decimal
         avgResponseTime: Math.round(avgResponseTime * 10) / 10, // Round to 1 decimal
         successCount,
-        errorCount: allHistoryForStats.length - successCount,
+        errorCount: totalCount - successCount,
       }
     }
 

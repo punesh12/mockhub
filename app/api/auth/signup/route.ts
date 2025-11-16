@@ -1,27 +1,38 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { rateLimitCheck, RATE_LIMITS } from "@/lib/rate-limit"
 
 export async function POST(request: NextRequest) {
+  // Check rate limit for auth endpoints (stricter)
+  const rateLimitResponse = rateLimitCheck(request, RATE_LIMITS.AUTH)
+  if (rateLimitResponse) {
+    return rateLimitResponse
+  }
   try {
     const body = await request.json()
-    const { id, name, email } = body
+    const { id } = body
 
-    // Validate request body
-    if (!id || !name || !email) {
+    // Validate user ID
+    if (!id || typeof id !== "string") {
       return NextResponse.json(
-        { error: "User ID, name, and email are required" },
+        { error: "User ID is required" },
         { status: 400 }
       )
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "Invalid email format" },
-        { status: 400 }
-      )
+    // Validate and sanitize name and email
+    const { validateAndSanitizeSignup } = await import("@/lib/input-security")
+    const validationResult = await validateAndSanitizeSignup({
+      name: body.name,
+      email: body.email,
+      password: body.password || "dummy", // Password not needed for DB creation
+    })
+
+    if (!validationResult.success) {
+      return validationResult.error
     }
+
+    const { name, email } = validationResult.data
 
     // Create user record in our database (linked to Supabase Auth user)
     try {

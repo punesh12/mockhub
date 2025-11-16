@@ -2,7 +2,6 @@ import { withAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
-import { isValidHttpMethod, isCommonHttpMethod } from "@/lib/http-methods"
 import {
   checkOrganizationAccess,
   canCreateMockInOrganization,
@@ -362,40 +361,21 @@ export const POST = withAuth(async (request, user) => {
     }
 
     const body = await request.json()
-    const { name, endpoint, method, responseCode, responseBody, organizationId } = body
+    const { organizationId } = body
 
-    // Validate request body
-    if (!name || !endpoint || !method) {
-      return NextResponse.json(
-        { error: "Name, endpoint, and method are required" },
-        { status: 400 }
-      )
+    // Validate and sanitize input using Yup validation + sanitization
+    const { validateAndSanitizeMockApiCreate } = await import("@/lib/input-security")
+    const validationResult = await validateAndSanitizeMockApiCreate({
+      ...body,
+      organizationId: organizationId || null,
+    })
+
+    if (!validationResult.success) {
+      return validationResult.error
     }
 
-    // Validate endpoint format
-    if (!endpoint.startsWith("/")) {
-      return NextResponse.json(
-        { error: "Endpoint must start with /" },
-        { status: 400 }
-      )
-    }
-
-    // Validate HTTP method
-    if (!isValidHttpMethod(method) || !isCommonHttpMethod(method)) {
-      return NextResponse.json(
-        { error: "Invalid HTTP method" },
-        { status: 400 }
-      )
-    }
-
-    // Validate response code
+    const { name, endpoint, method, responseCode, responseBody } = validationResult.data
     const code = responseCode || 200
-    if (code < 100 || code > 599) {
-      return NextResponse.json(
-        { error: "Invalid response code" },
-        { status: 400 }
-      )
-    }
 
     // If organizationId is provided, validate access
     if (organizationId) {

@@ -20,9 +20,18 @@ model MockApi {
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Composite indexes for common query patterns
   @@index([organizationId, endpoint, method])
+  @@index([userId, organizationId, createdAt])
+  @@index([userId, organizationId])
   @@index([organizationId])
   @@index([userId])
+  @@index([method])
+  @@index([responseCode])
+  // Indexes for search (case-insensitive)
+  @@index([name])
+  @@index([endpoint])
+  @@index([createdAt])
 }
 
 model Organization {
@@ -40,6 +49,9 @@ model Organization {
 
   @@index([ownerId])
   @@index([slug])
+  @@index([visibility])
+  @@index([name])
+  @@index([createdAt])
 }
 
 model OrganizationMember {
@@ -67,8 +79,17 @@ model RequestHistory {
   createdAt    DateTime @default(now())
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Composite indexes for common query patterns
+  @@index([userId, createdAt])
+  @@index([userId, method])
+  @@index([userId, status])
+  @@index([userId, createdAt, status])
+  // Single column indexes
   @@index([createdAt])
   @@index([userId])
+  @@index([method])
+  @@index([status])
+  @@index([url])
 }
 
 model User {

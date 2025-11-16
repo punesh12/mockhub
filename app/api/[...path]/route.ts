@@ -69,6 +69,23 @@ async function handleMockRequest(
   params: Promise<{ path: string[] }>
 ) {
   try {
+    // Rate limit check for mock API execution (more lenient)
+    // Try to get user ID if authenticated for better rate limiting
+    let userId: string | undefined
+    try {
+      const { getServerUser } = await import("@/lib/supabase-auth")
+      const user = await getServerUser()
+      userId = user?.id
+    } catch {
+      // Not authenticated, will use IP-based rate limiting
+    }
+
+    const { rateLimitCheck, RATE_LIMITS } = await import("@/lib/rate-limit")
+    const rateLimitResponse = rateLimitCheck(request, RATE_LIMITS.MOCK_API, userId)
+    if (rateLimitResponse) {
+      return rateLimitResponse
+    }
+
     const { path } = await params
 
     // Skip if this is a reserved route
