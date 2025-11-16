@@ -47,6 +47,19 @@ export async function DELETE(
   return handleMockRequest(request, "DELETE", params)
 }
 
+export async function OPTIONS() {
+  // Handle CORS preflight requests
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
+    },
+  })
+}
+
 async function handleMockRequest(
   request: NextRequest,
   method: string,
@@ -98,8 +111,15 @@ async function handleMockRequest(
       )
     }
 
-    // Return the mock response with the configured status code
-    return NextResponse.json(mock.responseBody, { status: mock.responseCode })
+    // Return the mock response with the configured status code and CORS headers
+    return NextResponse.json(mock.responseBody, {
+      status: mock.responseCode,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    })
   } catch (error) {
     console.error("Mock API execution error:", error)
     return NextResponse.json(
