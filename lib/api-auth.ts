@@ -92,3 +92,66 @@ export async function requireAuth(): Promise<User> {
   return user
 }
 
+/**
+ * Wrapper for optionally authenticated API route handlers
+ * Allows public access but provides user if authenticated
+ * 
+ * @example
+ * export const GET = withOptionalAuth(async (request, user) => {
+ *   // user may be null for unauthenticated requests
+ *   return NextResponse.json({ data: "..." })
+ * })
+ */
+export function withOptionalAuth<T extends any[]>(
+  handler: (
+    request: NextRequest,
+    user: User | null,
+    ...args: T
+  ) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
+    try {
+      const user = await getServerUser()
+      return await handler(request, user, ...args)
+    } catch (error) {
+      return handleApiError(error, request)
+    }
+  }
+}
+
+/**
+ * Wrapper for optionally authenticated API route handlers with params
+ * Allows public access but provides user if authenticated
+ * 
+ * @example
+ * export const GET = withOptionalAuthParams(async (request, { id }, user) => {
+ *   // user may be null for unauthenticated requests
+ *   return NextResponse.json({ data: "..." })
+ * })
+ */
+export function withOptionalAuthParams<
+  TParams extends Record<string, string>,
+  T extends any[]
+>(
+  handler: (
+    request: NextRequest,
+    params: TParams,
+    user: User | null,
+    ...args: T
+  ) => Promise<NextResponse>
+) {
+  return async (
+    request: NextRequest,
+    { params }: { params: Promise<TParams> },
+    ...args: T
+  ): Promise<NextResponse> => {
+    try {
+      const user = await getServerUser()
+      const resolvedParams = await params
+      return await handler(request, resolvedParams, user, ...args)
+    } catch (error) {
+      return handleApiError(error, request)
+    }
+  }
+}
+

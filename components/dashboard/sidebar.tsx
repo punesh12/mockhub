@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
   Zap,
+  Building2,
   History,
   Code,
   User,
@@ -33,6 +34,11 @@ const navItems: NavItem[] = [
     name: "Mocks",
     href: "/dashboard/mocks",
     icon: Zap,
+  },
+  {
+    name: "Organizations",
+    href: "/dashboard/organizations",
+    icon: Building2,
   },
   {
     name: "History",

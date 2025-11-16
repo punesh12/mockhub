@@ -22,6 +22,7 @@ import {
   Clock,
   ExternalLink,
   ArrowRight,
+  Building2,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import Link from "next/link"
@@ -188,6 +189,15 @@ export default function DashboardPage() {
             <Link href="/dashboard/test" className="flex items-center gap-2">
               <Play className="h-4 w-4" />
               Test API
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="lg">
+            <Link
+              href="/dashboard/organizations"
+              className="flex items-center gap-2"
+            >
+              <Building2 className="h-4 w-4" />
+              Organizations
             </Link>
           </Button>
         </div>

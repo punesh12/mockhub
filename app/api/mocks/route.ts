@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { isValidHttpMethod, isCommonHttpMethod } from "@/lib/http-methods"
+import {
+  checkOrganizationAccess,
+  canCreateMockInOrganization,
+} from "@/lib/organization-auth"
 
 export const GET = withAuth(async (request, user) => {
 
@@ -14,19 +18,83 @@ export const GET = withAuth(async (request, user) => {
     const search = searchParams.get("search") || ""
     const method = searchParams.get("method") || ""
     const statusCode = searchParams.get("statusCode") || ""
+    const organizationId = searchParams.get("organizationId") || ""
+    const personalOnly = searchParams.get("personalOnly") === "true"
     const sortBy = searchParams.get("sortBy") || "createdAt"
     const sortOrder = searchParams.get("sortOrder") || "desc"
 
     // Build where clause
-    const where: Prisma.MockApiWhereInput = {
-      userId: user.id,
+    let where: Prisma.MockApiWhereInput
+
+    // If personalOnly is true, only show personal mocks
+    if (personalOnly) {
+      where = {
+        userId: user.id,
+        organizationId: null,
+      } as Prisma.MockApiWhereInput
+    } else if (organizationId) {
+      // If organizationId is specified, filter by it and check access
+      const access = await checkOrganizationAccess(user.id, organizationId)
+      if (!access.hasAccess) {
+        return NextResponse.json(
+          { error: "Organization not found or access denied" },
+          { status: 404 }
+        )
+      }
+      // Override where clause to only include this organization's mocks
+      where = {
+        organizationId,
+        organization: {
+          OR: [
+            { ownerId: user.id },
+            {
+              members: {
+                some: {
+                  userId: user.id,
+                },
+              },
+            },
+            { visibility: "public" },
+          ],
+        },
+      } as Prisma.MockApiWhereInput
+    } else {
+      // Default: Include personal mocks and organization mocks user has access to
+      where = {
+        OR: [
+          // Personal mocks
+          { userId: user.id, organizationId: null } as Prisma.MockApiWhereInput,
+          // Organization mocks (user must be member)
+          {
+            organizationId: { not: null },
+            organization: {
+              OR: [
+                { ownerId: user.id },
+                {
+                  members: {
+                    some: {
+                      userId: user.id,
+                    },
+                  },
+                },
+                { visibility: "public" },
+              ],
+            },
+          } as Prisma.MockApiWhereInput,
+        ],
+      }
     }
 
     // Add search filter
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { endpoint: { contains: search, mode: "insensitive" } },
+      where.AND = [
+        ...((where.AND || []) as Prisma.MockApiWhereInput[]),
+        {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { endpoint: { contains: search, mode: "insensitive" } },
+          ],
+        },
       ]
     }
 
@@ -60,6 +128,21 @@ export const GET = withAuth(async (request, user) => {
         orderBy,
         skip,
         take: limit,
+        select: {
+          id: true,
+          name: true,
+          endpoint: true,
+          method: true,
+          responseCode: true,
+          createdAt: true,
+          organizationId: true,
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        } as Prisma.MockApiSelect,
       }),
       prisma.mockApi.count({
         where,
@@ -279,12 +362,12 @@ export const POST = withAuth(async (request, user) => {
     }
 
     const body = await request.json()
-    const { name, endpoint, method, responseCode, responseBody } = body
+    const { name, endpoint, method, responseCode, responseBody, organizationId } = body
 
     // Validate request body
-    if (!name || !endpoint || !method || !responseBody) {
+    if (!name || !endpoint || !method) {
       return NextResponse.json(
-        { error: "Name, endpoint, method, and responseBody are required" },
+        { error: "Name, endpoint, and method are required" },
         { status: 400 }
       )
     }
@@ -314,13 +397,33 @@ export const POST = withAuth(async (request, user) => {
       )
     }
 
-    // Check if endpoint already exists for this user
+    // If organizationId is provided, validate access
+    if (organizationId) {
+      const canCreate = await canCreateMockInOrganization(user.id, organizationId)
+      if (!canCreate) {
+        return NextResponse.json(
+          { error: "You don't have permission to create mocks in this organization" },
+          { status: 403 }
+        )
+      }
+    }
+
+    // Check if endpoint already exists
+    // For personal mocks: check userId + endpoint + method
+    // For organization mocks: check organizationId + endpoint + method
     const existingMock = await prisma.mockApi.findFirst({
-      where: {
-        userId: user.id,
-        endpoint: endpoint,
-        method: method.toUpperCase(),
-      },
+      where: (organizationId
+        ? {
+            organizationId,
+            endpoint: endpoint,
+            method: method.toUpperCase(),
+          }
+        : {
+            userId: user.id,
+            organizationId: null,
+            endpoint: endpoint,
+            method: method.toUpperCase(),
+          }) as unknown as Prisma.MockApiWhereInput,
     })
 
     if (existingMock) {
@@ -334,12 +437,13 @@ export const POST = withAuth(async (request, user) => {
     const mock = await prisma.mockApi.create({
       data: {
         userId: user.id,
+        organizationId: organizationId || null,
         name,
         endpoint,
         method: method.toUpperCase(),
         responseCode: code,
-        responseBody: responseBody,
-      },
+        responseBody: responseBody || {},
+      } as unknown as Prisma.MockApiCreateInput,
       select: {
         id: true,
         name: true,
@@ -347,7 +451,13 @@ export const POST = withAuth(async (request, user) => {
         method: true,
         responseCode: true,
         createdAt: true,
-      },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      } as Prisma.MockApiSelect,
     })
 
     return NextResponse.json(

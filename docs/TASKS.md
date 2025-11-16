@@ -192,6 +192,8 @@ This document outlines all tasks to be completed for the MockHub project.
   - [x] Add error handling for mock not found
   - [x] Display mock URL in mocks list with copy button
   - [x] Add "Open in new tab" button for testing
+  - [x] Add CORS support for all HTTP methods (GET, POST, PUT, PATCH, DELETE)
+  - [x] Add OPTIONS handler for CORS preflight requests
 
 ### Mock Data Generator
 
@@ -199,6 +201,294 @@ This document outlines all tasks to be completed for the MockHub project.
 - [x] Add UI for generating sample JSON
 - [x] Add templates (User, Product, Post, Comment, Order, Custom)
 - [ ] Add custom field generator
+
+---
+
+## 🏢 Organizations & Teams (New Feature)
+
+### Database Schema
+
+- [x] **Update Prisma Schema** (`/prisma/schema.prisma`)
+  - [x] Create `Organization` model
+    - [x] Fields: id, name, slug, description, visibility (private/public), ownerId, createdAt, updatedAt
+    - [x] Add indexes for ownerId and slug
+  - [x] Create `OrganizationMember` model
+    - [x] Fields: id, organizationId, userId, role (owner/admin/member), createdAt
+    - [x] Add unique constraint on (organizationId, userId)
+    - [x] Add indexes for organizationId and userId
+  - [x] Update `MockApi` model
+    - [x] Add optional `organizationId` field
+    - [x] Add relation to Organization
+    - [x] Update indexes to include organizationId
+  - [x] Run Prisma migrations (manual SQL migration applied to Supabase)
+
+### Organization Management API Routes
+
+- [x] **GET /api/organizations** - List user's organizations
+  - [x] Return organizations where user is owner or member
+  - [x] Include member count and role
+  - [x] Add pagination
+  - [x] Add search functionality (searches name, description, slug - case-insensitive)
+  - [x] Filter by visibility (public/private)
+  - [x] Support public organization discovery (`?public=true`)
+  - [x] Combine search with visibility filter properly
+
+- [x] **POST /api/organizations** - Create new organization
+  - [x] Validate request body (name, description, visibility)
+  - [x] Generate unique slug from name
+  - [x] Create organization with creator as owner
+  - [x] Create OrganizationMember record with owner role
+  - [x] Return created organization
+
+- [x] **GET /api/organizations/[id]** - Get organization details
+  - [x] Check user has access (owner/member or public)
+  - [x] Support both UUID and slug-based lookup
+  - [x] Return organization with member list
+  - [x] Include user's role in response
+  - [x] Allow public organizations to be accessed without authentication
+
+- [x] **PUT /api/organizations/[id]** - Update organization
+  - [x] Validate user is owner or admin
+  - [x] Support both UUID and slug-based lookup
+  - [x] Update name, description, visibility
+  - [x] Regenerate slug if name changed
+  - [x] Return updated organization
+
+- [x] **DELETE /api/organizations/[id]** - Delete organization
+  - [x] Validate user is owner
+  - [x] Support both UUID and slug-based lookup
+  - [x] Delete all organization mocks (cascade)
+  - [x] Delete all organization members
+  - [x] Delete organization
+  - [x] Return success response
+
+### Member Management API Routes
+
+- [x] **GET /api/organizations/[id]/members** - List organization members
+  - [x] Check user has access
+  - [x] Support both UUID and slug-based lookup
+  - [x] Return members with roles
+  - [x] Include member details (name, email)
+
+- [x] **POST /api/organizations/[id]/members** - Add member to organization
+  - [x] Validate user is owner or admin
+  - [x] Support both UUID and slug-based lookup
+  - [x] Validate member email exists
+  - [x] Check member not already in organization
+  - [x] Create OrganizationMember record
+  - [ ] Send invitation notification (optional - future)
+  - [x] Return created member record
+
+- [x] **PUT /api/organizations/[id]/members/[memberId]** - Update member role
+  - [x] Validate user is owner or admin
+  - [x] Support both UUID and slug-based lookup
+  - [x] Prevent changing owner role
+  - [x] Update member role
+  - [x] Return updated member
+
+- [x] **DELETE /api/organizations/[id]/members/[memberId]** - Remove member
+  - [x] Validate user is owner or admin
+  - [x] Support both UUID and slug-based lookup
+  - [x] Prevent removing owner
+  - [x] Allow members to remove themselves
+  - [x] Delete OrganizationMember record
+  - [x] Return success response
+
+### Organization Mock APIs
+
+- [x] **Update GET /api/mocks** - Support organization filtering
+  - [x] Add optional `organizationId` query parameter
+  - [x] Add optional `personalOnly` query parameter
+  - [x] Filter mocks by organization if provided
+  - [x] Check user has access to organization
+  - [x] Return both personal and organization mocks
+  - [x] Exclude `responseBody` from list response for performance
+  - [x] Include organization data in response
+
+- [x] **Update POST /api/mocks** - Support creating mocks in organizations
+  - [x] Add optional `organizationId` field
+  - [x] Validate user has access (owner/member)
+  - [x] Create mock with organizationId
+  - [x] Return created mock with organization data
+  - [x] Make `responseBody` optional (defaults to empty object)
+
+- [x] **Update PUT /api/mocks/[id]** - Support organization in updates
+  - [x] Include organization data in response
+  - [x] Make `responseBody` optional for updates
+
+- [x] **Update Mock API Execution** (`/app/api/[...path]/route.ts`)
+  - [x] Look up mocks by endpoint, method, and organization
+  - [x] Support organization-scoped endpoints (`/api/org/[slug]/[endpoint]`)
+  - [x] Handle public organization mocks without authentication
+  - [x] Check access for private organization mocks
+
+### Organization UI Pages
+
+- [x] **Organizations List Page** (`/app/dashboard/organizations/page.tsx`)
+  - [x] Display user's organizations (owned and member)
+  - [x] Show organization cards with name, description, member count
+  - [x] Add "Create Organization" button
+  - [x] Add search functionality (searches name, description, slug)
+  - [x] Add search debouncing (500ms delay)
+  - [x] Add visibility filter (public/private)
+  - [x] Add role filter (owner/admin/member) - client-side
+  - [x] Add active filter badges with remove functionality
+  - [x] Add empty state
+  - [x] Add loading states
+  - [x] Use slug-based URLs for navigation
+  - [x] Fix search API integration
+
+- [x] **Create Organization Page** (`/app/dashboard/organizations/new/page.tsx`)
+  - [x] Create form with name, description, visibility fields
+  - [x] Add visibility toggle (Private/Public)
+  - [x] Add validation
+  - [x] Show preview of organization settings
+  - [x] Redirect to organization page on success (using slug)
+
+- [x] **Organization Detail Page** (`/app/dashboard/organizations/[id]/page.tsx`)
+  - [x] Display organization information
+  - [x] Support slug-based URLs
+  - [x] Show organization settings link (owner/admin only)
+  - [x] Display organization mocks list
+  - [x] Show member list with roles
+  - [x] Add "Create Mock" button (scoped to organization)
+  - [x] Add "Manage Members" section (owner/admin only)
+  - [x] Add "Leave Organization" button (members only)
+  - [x] Add "Delete Organization" button (owner only)
+  - [x] Improved layout and empty states
+
+- [x] **Organization Settings Page** (`/app/dashboard/organizations/[id]/settings/page.tsx`)
+  - [x] Support slug-based URLs
+  - [x] Tabbed interface (General, Members, Danger Zone)
+  - [x] Statistics overview cards (Members, Mocks, Visibility)
+  - [x] Edit organization name and description
+  - [x] Organization slug display with copy button
+  - [x] Organization URL display with copy button
+  - [x] Toggle visibility (private/public) with descriptions
+  - [x] Unsaved changes indicator
+  - [x] Manage members (add, remove, change roles)
+  - [x] Member search functionality
+  - [x] Member avatars with initials
+  - [x] Enhanced empty states
+  - [x] Delete organization (owner only)
+  - [ ] Transfer ownership (owner only - future)
+
+### Organization Components
+
+- [ ] **OrganizationCard Component** (`/components/organizations/OrganizationCard.tsx`)
+  - [ ] Display organization info
+  - [ ] Show member count and visibility badge
+  - [ ] Add hover effects
+  - [ ] Link to organization detail page
+
+- [ ] **OrganizationSelector Component** (`/components/organizations/OrganizationSelector.tsx`)
+  - [ ] Dropdown to select organization when creating mock
+  - [ ] Show "Personal" and organization options
+  - [ ] Display organization name and member count
+
+- [ ] **MemberList Component** (`/components/organizations/MemberList.tsx`)
+  - [ ] Display organization members
+  - [ ] Show member name, email, role
+  - [ ] Add role badges (Owner, Admin, Member)
+  - [ ] Add action buttons (edit role, remove) for owners/admins
+
+- [ ] **InviteMemberDialog Component** (`/components/organizations/InviteMemberDialog.tsx`)
+  - [ ] Form to invite member by email
+  - [ ] Validate email exists in system
+  - [ ] Select role (Admin/Member)
+  - [ ] Show success/error messages
+
+### Access Control & Permissions
+
+- [x] **Create Organization Access Utilities** (`/lib/organization-auth.ts`)
+  - [x] `checkOrganizationAccess(userId, organizationId)` - Check if user can access
+  - [x] `checkOrganizationPermission(userId, organizationId, role)` - Check specific role
+  - [x] `getUserOrganizationRole(userId, organizationId)` - Get user's role
+  - [x] `canEditOrganization(userId, organizationId)` - Check edit permission
+  - [x] `canManageMembers(userId, organizationId)` - Check member management permission
+  - [x] `canCreateMockInOrganization(userId, organizationId)` - Check mock creation permission
+  - [x] `generateUniqueSlug(name)` - Generate unique organization slug
+
+- [x] **Update Mock API Access Control**
+  - [x] Check organization access when fetching mocks
+  - [x] Validate organization membership when creating/editing mocks
+  - [x] Allow public organization mocks to be accessible without auth (API ready)
+
+- [x] **Update API Routes with Organization Checks**
+  - [x] Add organization access checks to all organization routes
+  - [x] Return appropriate error messages for unauthorized access
+  - [x] Support optional authentication for public organizations
+  - [ ] Log access attempts for security (future)
+
+### Navigation & Sidebar Updates
+
+- [x] **Update Dashboard Sidebar** (`/components/app-sidebar.tsx`)
+  - [x] Add "Organizations" menu item
+  - [ ] Show organization count badge (future)
+  - [ ] Add submenu for user's organizations (future)
+  - [ ] Highlight active organization (future)
+
+- [x] **Update Mocks Page** (`/app/dashboard/mocks/page.tsx`)
+  - [x] Add organization filter dropdown
+  - [x] Show organization name on mock cards
+  - [x] Filter mocks by selected organization (including "Personal" option)
+  - [x] Update "Create Mock" to support organization selection
+
+### Public Organization Sharing
+
+- [x] **Public Organization API Support**
+  - [x] Allow public organizations to be accessed without authentication
+  - [x] Update GET /api/organizations/[id] to support optional auth
+  - [x] Update GET /api/organizations to support public discovery (`?public=true`)
+  - [x] Create `withOptionalAuth` and `withOptionalAuthParams` wrappers
+  - [ ] Public Organization Page (`/app/organizations/[slug]/page.tsx`) - future
+    - [ ] Display public organization information
+    - [ ] Show public mocks list
+    - [ ] Allow viewing mock details
+    - [ ] Add "Join Organization" button (if not member)
+    - [ ] Show member count (if public)
+
+- [x] **Organization Slug-Based URLs**
+  - [x] Support slug-based URLs for all organization routes
+  - [x] API routes support both UUID and slug lookup
+  - [x] All UI components use slug-based navigation
+  - [x] Backward compatible with UUID-based URLs
+
+- [x] **Public Mock API Access**
+  - [x] Allow public organization mocks to be accessed without auth
+  - [x] Update mock API execution to check organization visibility
+  - [x] Support organization-scoped URLs (`/api/org/[slug]/[endpoint]`)
+
+### Integration & Migration
+
+- [x] **Data Migration**
+  - [x] Manual SQL migration applied to Supabase
+  - [x] Existing mocks remain as personal (no organizationId)
+  - [x] Backward compatibility maintained
+
+- [x] **Update Existing Components**
+  - [x] Update MockCard to show organization name
+  - [x] Update Create Mock form to support organization selection
+  - [x] Update mocks list to filter by organization
+
+### Testing
+
+- [ ] **Test Organization CRUD Operations**
+  - [ ] Test creating organization
+  - [ ] Test updating organization
+  - [ ] Test deleting organization
+  - [ ] Test member management
+
+- [ ] **Test Access Control**
+  - [ ] Test owner permissions
+  - [ ] Test admin permissions
+  - [ ] Test member permissions
+  - [ ] Test public organization access
+
+- [ ] **Test Mock API Integration**
+  - [ ] Test creating mocks in organizations
+  - [ ] Test accessing organization mocks
+  - [ ] Test public organization mock execution
 
 ---
 
@@ -349,16 +639,36 @@ This document outlines all tasks to be completed for the MockHub project.
 
 ### Dark Mode
 
-- [ ] Add dark mode toggle
-- [ ] Implement theme persistence
-- [ ] Test all components in dark mode
+- [x] Add dark mode toggle
+  - [x] Create ThemeToggle component with system/light/dark options
+  - [x] Add theme toggle button to UI
+- [x] Implement theme persistence
+  - [x] Integrate next-themes for theme management
+  - [x] Add ThemeProvider to root layout
+  - [x] Support system theme preference
+  - [x] Persist theme selection in localStorage
+- [x] Test all components in dark mode
+  - [x] Configure dark mode CSS variables
+  - [x] Ensure all components support dark theme
 
 ### Animations
 
-- [ ] Add page transition animations
-- [ ] Add loading skeleton animations
-- [ ] Add micro-interactions throughout
-- [ ] Optimize animation performance
+- [x] Add page transition animations
+  - [x] Component-level animations with Framer Motion
+  - [x] Fade-in and slide-up animations on page load
+  - [x] Stagger animations for lists and cards
+- [x] Add loading skeleton animations
+  - [x] Skeleton component with animate-pulse
+  - [x] Loading states for dashboard stats and data
+- [x] Add micro-interactions throughout
+  - [x] Hover effects on buttons and cards
+  - [x] Scale transforms on interactive elements
+  - [x] whileHover and whileTap animations
+  - [x] Smooth transitions on theme toggle
+- [x] Optimize animation performance
+  - [x] Use Framer Motion for performant animations
+  - [x] Implement stagger delays for list animations
+  - [x] Use CSS transitions where appropriate
 
 ### Responsive Design
 
@@ -412,7 +722,10 @@ This document outlines all tasks to be completed for the MockHub project.
 ### Security
 
 - [ ] Add rate limiting
-- [ ] Add CORS configuration
+- [x] Add CORS configuration
+  - [x] Add CORS headers to mock API responses
+  - [x] Add OPTIONS handler for preflight requests
+  - [x] Enable cross-origin requests for API testing
 - [ ] Add input sanitization
 - [ ] Add SQL injection prevention
 - [ ] Add XSS protection
@@ -576,3 +889,32 @@ This document outlines all tasks to be completed for the MockHub project.
 11. ✅ **Code Quality** - COMPLETED
     - ✅ Add Prettier for code formatting
     - ✅ Configure Prettier with project settings
+12. ✅ **CORS Support** - COMPLETED
+    - ✅ Add CORS headers to mock API responses
+    - ✅ Add OPTIONS handler for preflight requests
+    - ✅ Enable POST, PUT, PATCH, DELETE requests from external clients
+13. ✅ **Dark Mode** - COMPLETED
+    - ✅ Add dark mode toggle with system/light/dark options
+    - ✅ Implement theme persistence with next-themes
+    - ✅ Configure dark mode CSS variables
+    - ✅ Ensure all components support dark theme
+14. ✅ **Animations** - COMPLETED
+    - ✅ Component-level animations with Framer Motion
+    - ✅ Loading skeleton animations
+    - ✅ Micro-interactions throughout the app
+    - ✅ Performance-optimized animations
+15. ✅ **Organizations & Teams** - MOSTLY COMPLETED
+    - ✅ Database schema updates (Organization, OrganizationMember models)
+    - ✅ Organization CRUD API routes (with slug support)
+    - ✅ Member management API routes (with slug support)
+    - ✅ Organization UI pages and components
+    - ✅ Access control and permissions system
+    - ✅ Integration with existing mock API system
+    - ✅ Public organization sharing (API support)
+    - ✅ Organization slug-based URLs
+    - ✅ Enhanced organization settings page with tabs and statistics
+    - ✅ Organization filter on mocks page
+    - ✅ Organization name display on mock cards
+    - ✅ Organization list page search and filters (search, visibility, role)
+    - ✅ Search API integration with debouncing
+    - [x] Organization-scoped mock API execution (completed)

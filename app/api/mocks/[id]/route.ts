@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { withAuthParams } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { isValidHttpMethod, isCommonHttpMethod } from "@/lib/http-methods"
 
 /**
@@ -11,6 +12,14 @@ export const GET = withAuthParams(async (request, { id }, user) => {
     // Find the mock
     const mock = await prisma.mockApi.findUnique({
       where: { id },
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      } as Prisma.MockApiInclude,
     })
 
     if (!mock) {
@@ -53,9 +62,9 @@ export const PUT = withAuthParams(async (request, { id }, user) => {
     }
 
     // Validate request body
-    if (!name || !endpoint || !method || !responseBody) {
+    if (!name || !endpoint || !method) {
       return NextResponse.json(
-        { error: "Name, endpoint, method, and responseBody are required" },
+        { error: "Name, endpoint, and method are required" },
         { status: 400 }
       )
     }
@@ -85,14 +94,17 @@ export const PUT = withAuthParams(async (request, { id }, user) => {
       )
     }
 
-    // Validate JSON response body
-    try {
-      JSON.parse(responseBody)
-    } catch (jsonError) {
-      return NextResponse.json(
-        { error: "Response body must be valid JSON" },
-        { status: 400 }
-      )
+    // Validate JSON response body if provided
+    let parsedResponseBody = existingMock.responseBody
+    if (responseBody !== undefined) {
+      try {
+        parsedResponseBody = typeof responseBody === "string" ? JSON.parse(responseBody) : responseBody
+      } catch {
+        return NextResponse.json(
+          { error: "Response body must be valid JSON" },
+          { status: 400 }
+        )
+      }
     }
 
     // Check if endpoint/method combination already exists for another mock
@@ -125,8 +137,8 @@ export const PUT = withAuthParams(async (request, { id }, user) => {
         endpoint,
         method: method.toUpperCase(),
         responseCode: code,
-        responseBody: JSON.parse(responseBody), // Store as JSON
-      },
+        responseBody: parsedResponseBody as Prisma.InputJsonValue,
+      } as unknown as Prisma.MockApiUpdateInput,
       select: {
         id: true,
         name: true,
@@ -135,7 +147,13 @@ export const PUT = withAuthParams(async (request, { id }, user) => {
         responseCode: true,
         responseBody: true,
         createdAt: true,
-      },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      } as Prisma.MockApiSelect,
     })
 
     return NextResponse.json({

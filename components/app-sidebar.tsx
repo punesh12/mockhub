@@ -5,6 +5,7 @@ import Link from "next/link"
 import {
   LayoutDashboard,
   Zap,
+  Building2,
   History,
   Code,
   type LucideIcon,
@@ -42,6 +43,11 @@ const navMain: NavItem[] = [
     icon: Zap,
   },
   {
+    title: "Organizations",
+    url: "/dashboard/organizations",
+    icon: Building2,
+  },
+  {
     title: "History",
     url: "/dashboard/history",
     icon: History,
@@ -51,7 +57,6 @@ const navMain: NavItem[] = [
     url: "/dashboard/test",
     icon: Code,
   },
-
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

@@ -34,13 +34,7 @@ import SearchBar from "@/components/shared/components/SearchBar"
 import StatCard from "@/components/shared/components/StatCard"
 import FilterBadge from "@/components/shared/components/FilterBadge"
 import { getMethodColor } from "@/lib/method-utils"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import Modal from "@/components/shared/components/Modal"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,16 +42,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import ConfirmationModal from "@/components/shared/components/ConfirmationModal"
 import {
   Loader2,
   RefreshCw,
@@ -933,16 +918,15 @@ export default function HistoryPage() {
         </Card>
       )}
 
-      {/* View Details Dialog */}
-      <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Request Details</DialogTitle>
-            <DialogDescription>
-              View full request and response information
-            </DialogDescription>
-          </DialogHeader>
-          {selectedItem && (
+      {/* View Details Modal */}
+      <Modal
+        open={viewDetailsOpen}
+        onOpenChange={setViewDetailsOpen}
+        title="Request Details"
+        description="View full request and response information"
+        maxWidth="xl"
+      >
+        {selectedItem && (
             <Tabs defaultValue="request" className="w-full">
               <TabsList>
                 <TabsTrigger value="request">Request</TabsTrigger>
@@ -1003,39 +987,21 @@ export default function HistoryPage() {
                 </div>
               </TabsContent>
             </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
+        )}
+      </Modal>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Request History?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this request from your history?
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Request History?"
+        description="Are you sure you want to delete this request from your history? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteConfirm}
+        isLoading={isDeleting}
+        variant="destructive"
+      />
     </div>
   )
 }
