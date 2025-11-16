@@ -46,37 +46,35 @@ export const GET = withAuth(async (request, user) => {
       }
     }
 
-    // Fetch statistics in parallel
-    const [totalMocks, totalHistory, historyItems] = await Promise.all([
-      prisma.mockApi.count({
-        where: { userId: user.id },
-      }),
-      prisma.requestHistory.count({
-        where: { userId: user.id },
-      }),
-      prisma.requestHistory.findMany({
-        where: { userId: user.id },
-        select: {
-          status: true,
-        },
-      }),
-    ])
+    // Fetch statistics in parallel using aggregation queries (much faster)
+    const [totalMocks, totalHistory, successCount, activeEndpoints] =
+      await Promise.all([
+        prisma.mockApi.count({
+          where: { userId: user.id },
+        }),
+        prisma.requestHistory.count({
+          where: { userId: user.id },
+        }),
+        // Count successful requests (status 200-299) directly
+        prisma.requestHistory.count({
+          where: {
+            userId: user.id,
+            status: { gte: 200, lt: 300 },
+          },
+        }),
+        // Active endpoints (mocks with unique endpoint/method combinations)
+        prisma.mockApi.groupBy({
+          by: ["endpoint", "method"],
+          where: { userId: user.id },
+          _count: true,
+        }),
+      ])
 
-    // Calculate success rate
-    const successCount = historyItems.filter(
-      (h) => h.status >= 200 && h.status < 300
-    ).length
+    // Calculate success rate using aggregated count
     const successRate =
-      historyItems.length > 0
-        ? Math.round((successCount / historyItems.length) * 100 * 10) / 10
+      totalHistory > 0
+        ? Math.round((successCount / totalHistory) * 100 * 10) / 10
         : 0
-
-    // Active endpoints (mocks with unique endpoint/method combinations)
-    const activeEndpoints = await prisma.mockApi.groupBy({
-      by: ["endpoint", "method"],
-      where: { userId: user.id },
-      _count: true,
-    })
 
     return NextResponse.json({
       stats: {

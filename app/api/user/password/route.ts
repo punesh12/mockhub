@@ -8,23 +8,19 @@ import { getServerSupabase } from "@/lib/supabase-auth"
 export const PUT = withAuth(async (request, user) => {
 
     const body = await request.json()
-    const { currentPassword, newPassword } = body
 
-    // Validate request body
-    if (!currentPassword || !newPassword) {
+    // Validate input using Yup validation
+    const { validateAndParse, getValidationErrorMessage, changePasswordSchema } = await import("@/lib/validation")
+    const validationResult = await validateAndParse(changePasswordSchema, body)
+
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Current password and new password are required" },
+        { error: getValidationErrorMessage(validationResult.error) },
         { status: 400 }
       )
     }
 
-    // Validate new password strength
-    if (newPassword.length < 6) {
-      return NextResponse.json(
-        { error: "New password must be at least 6 characters long" },
-        { status: 400 }
-      )
-    }
+    const { currentPassword, newPassword } = validationResult.data
 
     // Verify current password by attempting to sign in
     const supabase = await getServerSupabase()

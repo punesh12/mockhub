@@ -277,38 +277,18 @@ export const GET = withOptionalAuth(async (request, user) => {
 export const POST = withAuth(async (request, user) => {
   try {
     const body = await request.json()
-    const { name, description, visibility = "private" } = body
 
-    // Validate request body
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Organization name is required" },
-        { status: 400 }
-      )
+    // Validate and sanitize input using Yup validation + sanitization
+    const { validateAndSanitizeOrganizationCreate } = await import("@/lib/input-security")
+    const validationResult = await validateAndSanitizeOrganizationCreate(body)
+
+    if (!validationResult.success) {
+      return validationResult.error
     }
 
-    if (name.length > 100) {
-      return NextResponse.json(
-        { error: "Organization name must be less than 100 characters" },
-        { status: 400 }
-      )
-    }
+    const { name, description, visibility } = validationResult.data
 
-    if (description && description.length > 500) {
-      return NextResponse.json(
-        { error: "Description must be less than 500 characters" },
-        { status: 400 }
-      )
-    }
-
-    if (visibility !== "private" && visibility !== "public") {
-      return NextResponse.json(
-        { error: "Visibility must be 'private' or 'public'" },
-        { status: 400 }
-      )
-    }
-
-    // Generate unique slug
+    // Generate unique slug (will be sanitized in generateUniqueSlug)
     const slug = await generateUniqueSlug(name)
 
     // Create organization with creator as owner

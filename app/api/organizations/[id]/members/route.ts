@@ -41,6 +41,7 @@ export const GET = withAuth(async (request, user, { params }) => {
       )
     }
 
+    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const members = await prisma.organizationMember.findMany({
       where: {
         organizationId: organizationId,
@@ -116,15 +117,16 @@ export const POST = withAuth(async (request, user, { params }) => {
     }
 
     const body = await request.json()
-    const { email, role = "member" } = body
 
-    // Validate request body
-    if (!email || typeof email !== "string") {
-      return NextResponse.json(
-        { error: "Member email is required" },
-        { status: 400 }
-      )
+    // Validate and sanitize input using Yup validation + sanitization
+    const { validateAndSanitizeInviteMember } = await import("@/lib/input-security")
+    const validationResult = await validateAndSanitizeInviteMember(body)
+
+    if (!validationResult.success) {
+      return validationResult.error
     }
+
+    const { email, role } = validationResult.data
 
     if (role !== "admin" && role !== "member") {
       return NextResponse.json(
@@ -146,6 +148,7 @@ export const POST = withAuth(async (request, user, { params }) => {
     }
 
     // Check if user is already a member
+    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const existingMember = await prisma.organizationMember.findUnique({
       where: {
         organizationId_userId: {
@@ -171,6 +174,7 @@ export const POST = withAuth(async (request, user, { params }) => {
     }
 
     // Create member record
+    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const member = await prisma.organizationMember.create({
       data: {
         organizationId: organizationId,

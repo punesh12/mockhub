@@ -40,21 +40,21 @@ export const GET = withAuth(async (request, user) => {
 export const PUT = withAuth(async (request, user) => {
 
     const body = await request.json()
-    const { name, email } = body
 
-    // Validate request body
-    if (!name || !email) {
-      return NextResponse.json(
-        { error: "Name and email are required" },
-        { status: 400 }
-      )
+    // Validate and sanitize input using Yup validation + sanitization
+    const { validateAndSanitizeProfileUpdate } = await import("@/lib/input-security")
+    const validationResult = await validateAndSanitizeProfileUpdate(body)
+
+    if (!validationResult.success) {
+      return validationResult.error
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    const { name, email } = validationResult.data
+
+    // Ensure at least one field is provided
+    if (!name && !email) {
       return NextResponse.json(
-        { error: "Invalid email format" },
+        { error: "At least name or email must be provided" },
         { status: 400 }
       )
     }

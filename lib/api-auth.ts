@@ -4,11 +4,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerUser } from "@/lib/supabase-auth"
 import { AuthenticationError } from "./errors"
 import { handleApiError } from "./error-handler"
+import { rateLimitCheck, RATE_LIMITS, type RateLimitConfig } from "./rate-limit"
 import type { User } from "@supabase/supabase-js"
 
 /**
  * Wrapper for authenticated API route handlers
- * Automatically checks authentication and passes user to handler
+ * Automatically checks authentication, rate limiting, and passes user to handler
  * 
  * @example
  * export const GET = withAuth(async (request, user) => {
@@ -21,17 +22,33 @@ export function withAuth<T extends any[]>(
     request: NextRequest,
     user: User,
     ...args: T
-  ) => Promise<NextResponse>
+  ) => Promise<NextResponse>,
+  rateLimitConfig: RateLimitConfig = RATE_LIMITS.API
 ) {
   return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
     try {
+      // Check rate limit first
+      const rateLimitResponse = rateLimitCheck(request, rateLimitConfig)
+      if (rateLimitResponse) {
+        return rateLimitResponse
+      }
+
       const user = await getServerUser()
 
       if (!user) {
         throw new AuthenticationError("Unauthorized")
       }
 
-      return await handler(request, user, ...args)
+      const response = await handler(request, user, ...args)
+      
+      // Add rate limit headers
+      const { checkRateLimit } = await import("./rate-limit")
+      const { remaining, resetTime } = checkRateLimit(request, rateLimitConfig, user.id)
+      response.headers.set("X-RateLimit-Limit", rateLimitConfig.maxRequests.toString())
+      response.headers.set("X-RateLimit-Remaining", remaining.toString())
+      response.headers.set("X-RateLimit-Reset", resetTime.toString())
+
+      return response
     } catch (error) {
       return handleApiError(error, request)
     }
@@ -40,7 +57,7 @@ export function withAuth<T extends any[]>(
 
 /**
  * Wrapper for authenticated API route handlers with params
- * Automatically checks authentication and passes user to handler
+ * Automatically checks authentication, rate limiting, and passes user to handler
  * 
  * @example
  * export const GET = withAuthParams(async (request, { id }, user) => {
@@ -57,7 +74,8 @@ export function withAuthParams<
     params: TParams,
     user: User,
     ...args: T
-  ) => Promise<NextResponse>
+  ) => Promise<NextResponse>,
+  rateLimitConfig: RateLimitConfig = RATE_LIMITS.API
 ) {
   return async (
     request: NextRequest,
@@ -65,6 +83,12 @@ export function withAuthParams<
     ...args: T
   ): Promise<NextResponse> => {
     try {
+      // Check rate limit first
+      const rateLimitResponse = rateLimitCheck(request, rateLimitConfig)
+      if (rateLimitResponse) {
+        return rateLimitResponse
+      }
+
       const user = await getServerUser()
 
       if (!user) {
@@ -72,7 +96,16 @@ export function withAuthParams<
       }
 
       const resolvedParams = await params
-      return await handler(request, resolvedParams, user, ...args)
+      const response = await handler(request, resolvedParams, user, ...args)
+      
+      // Add rate limit headers
+      const { checkRateLimit } = await import("./rate-limit")
+      const { remaining, resetTime } = checkRateLimit(request, rateLimitConfig, user.id)
+      response.headers.set("X-RateLimit-Limit", rateLimitConfig.maxRequests.toString())
+      response.headers.set("X-RateLimit-Remaining", remaining.toString())
+      response.headers.set("X-RateLimit-Reset", resetTime.toString())
+
+      return response
     } catch (error) {
       return handleApiError(error, request)
     }
@@ -95,6 +128,7 @@ export async function requireAuth(): Promise<User> {
 /**
  * Wrapper for optionally authenticated API route handlers
  * Allows public access but provides user if authenticated
+ * Includes rate limiting
  * 
  * @example
  * export const GET = withOptionalAuth(async (request, user) => {
@@ -107,12 +141,28 @@ export function withOptionalAuth<T extends any[]>(
     request: NextRequest,
     user: User | null,
     ...args: T
-  ) => Promise<NextResponse>
+  ) => Promise<NextResponse>,
+  rateLimitConfig: RateLimitConfig = RATE_LIMITS.API
 ) {
   return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
     try {
+      // Check rate limit first
+      const rateLimitResponse = rateLimitCheck(request, rateLimitConfig)
+      if (rateLimitResponse) {
+        return rateLimitResponse
+      }
+
       const user = await getServerUser()
-      return await handler(request, user, ...args)
+      const response = await handler(request, user, ...args)
+      
+      // Add rate limit headers
+      const { checkRateLimit } = await import("./rate-limit")
+      const { remaining, resetTime } = checkRateLimit(request, rateLimitConfig, user?.id)
+      response.headers.set("X-RateLimit-Limit", rateLimitConfig.maxRequests.toString())
+      response.headers.set("X-RateLimit-Remaining", remaining.toString())
+      response.headers.set("X-RateLimit-Reset", resetTime.toString())
+
+      return response
     } catch (error) {
       return handleApiError(error, request)
     }
@@ -122,6 +172,7 @@ export function withOptionalAuth<T extends any[]>(
 /**
  * Wrapper for optionally authenticated API route handlers with params
  * Allows public access but provides user if authenticated
+ * Includes rate limiting
  * 
  * @example
  * export const GET = withOptionalAuthParams(async (request, { id }, user) => {
@@ -138,7 +189,8 @@ export function withOptionalAuthParams<
     params: TParams,
     user: User | null,
     ...args: T
-  ) => Promise<NextResponse>
+  ) => Promise<NextResponse>,
+  rateLimitConfig: RateLimitConfig = RATE_LIMITS.API
 ) {
   return async (
     request: NextRequest,
@@ -146,9 +198,24 @@ export function withOptionalAuthParams<
     ...args: T
   ): Promise<NextResponse> => {
     try {
+      // Check rate limit first
+      const rateLimitResponse = rateLimitCheck(request, rateLimitConfig)
+      if (rateLimitResponse) {
+        return rateLimitResponse
+      }
+
       const user = await getServerUser()
       const resolvedParams = await params
-      return await handler(request, resolvedParams, user, ...args)
+      const response = await handler(request, resolvedParams, user, ...args)
+      
+      // Add rate limit headers
+      const { checkRateLimit } = await import("./rate-limit")
+      const { remaining, resetTime } = checkRateLimit(request, rateLimitConfig, user?.id)
+      response.headers.set("X-RateLimit-Limit", rateLimitConfig.maxRequests.toString())
+      response.headers.set("X-RateLimit-Remaining", remaining.toString())
+      response.headers.set("X-RateLimit-Reset", resetTime.toString())
+
+      return response
     } catch (error) {
       return handleApiError(error, request)
     }

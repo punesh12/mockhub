@@ -209,49 +209,16 @@ export const PUT = withAuth(async (request, user, { params }) => {
     }
 
     const body = await request.json()
-    const { name, description, visibility } = body
 
-    // Validate request body
-    if (name !== undefined) {
-      if (typeof name !== "string" || name.trim().length === 0) {
-        return NextResponse.json(
-          { error: "Organization name cannot be empty" },
-          { status: 400 }
-        )
-      }
+    // Validate and sanitize input using Yup validation + sanitization
+    const { validateAndSanitizeOrganizationUpdate } = await import("@/lib/input-security")
+    const validationResult = await validateAndSanitizeOrganizationUpdate(body)
 
-      if (name.length > 100) {
-        return NextResponse.json(
-          { error: "Organization name must be less than 100 characters" },
-          { status: 400 }
-        )
-      }
+    if (!validationResult.success) {
+      return validationResult.error
     }
 
-    if (description !== undefined && description !== null) {
-      if (typeof description !== "string") {
-        return NextResponse.json(
-          { error: "Description must be a string" },
-          { status: 400 }
-        )
-      }
-
-      if (description.length > 500) {
-        return NextResponse.json(
-          { error: "Description must be less than 500 characters" },
-          { status: 400 }
-        )
-      }
-    }
-
-    if (visibility !== undefined) {
-      if (visibility !== "private" && visibility !== "public") {
-        return NextResponse.json(
-          { error: "Visibility must be 'private' or 'public'" },
-          { status: 400 }
-        )
-      }
-    }
+    const { name, description, visibility } = validationResult.data
 
     // Get current organization
     // @ts-expect-error - Organization model exists in Prisma schema

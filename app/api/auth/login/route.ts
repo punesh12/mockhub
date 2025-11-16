@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSupabase } from "@/lib/supabase-auth"
+import { rateLimitCheck, RATE_LIMITS } from "@/lib/rate-limit"
+import { validateAndParse, getValidationErrorMessage } from "@/lib/validation"
+import { loginFormSchema } from "@/lib/form-validation"
 
 export async function POST(request: NextRequest) {
+  // Check rate limit for auth endpoints (stricter)
+  const rateLimitResponse = rateLimitCheck(request, RATE_LIMITS.AUTH)
+  if (rateLimitResponse) {
+    return rateLimitResponse
+  }
+
   try {
     const body = await request.json()
-    const { email, password } = body
 
-    // Validate request body
-    if (!email || !password) {
+    // Validate input using Yup
+    const validationResult = await validateAndParse(loginFormSchema, body)
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: getValidationErrorMessage(validationResult.error) },
         { status: 400 }
       )
     }
+
+    const { email, password } = validationResult.data
 
     // Check if Supabase is configured
     if (

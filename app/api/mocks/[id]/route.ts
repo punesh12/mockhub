@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { withAuthParams } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
-import { isValidHttpMethod, isCommonHttpMethod } from "@/lib/http-methods"
 
 /**
  * GET /api/mocks/[id] - Get a single mock by ID
@@ -41,9 +40,6 @@ export const GET = withAuthParams(async (request, { id }, user) => {
  * PUT /api/mocks/[id] - Update a mock
  */
 export const PUT = withAuthParams(async (request, { id }, user) => {
-    const body = await request.json()
-    const { name, endpoint, method, responseCode, responseBody } = body
-
     // Find the mock first
     const existingMock = await prisma.mockApi.findUnique({
       where: { id },
@@ -61,62 +57,35 @@ export const PUT = withAuthParams(async (request, { id }, user) => {
       )
     }
 
-    // Validate request body
-    if (!name || !endpoint || !method) {
-      return NextResponse.json(
-        { error: "Name, endpoint, and method are required" },
-        { status: 400 }
-      )
+    const body = await request.json()
+
+    // Validate and sanitize input using Yup validation + sanitization
+    const { validateAndSanitizeMockApiUpdate } = await import("@/lib/input-security")
+    const validationResult = await validateAndSanitizeMockApiUpdate(body)
+
+    if (!validationResult.success) {
+      return validationResult.error
     }
 
-    // Validate endpoint format
-    if (!endpoint.startsWith("/")) {
-      return NextResponse.json(
-        { error: "Endpoint must start with /" },
-        { status: 400 }
-      )
-    }
-
-    // Validate HTTP method
-    if (!isValidHttpMethod(method) || !isCommonHttpMethod(method)) {
-      return NextResponse.json(
-        { error: "Invalid HTTP method" },
-        { status: 400 }
-      )
-    }
-
-    // Validate response code
-    const code = responseCode || 200
-    if (code < 100 || code > 599) {
-      return NextResponse.json(
-        { error: "Invalid response code" },
-        { status: 400 }
-      )
-    }
-
-    // Validate JSON response body if provided
-    let parsedResponseBody = existingMock.responseBody
-    if (responseBody !== undefined) {
-      try {
-        parsedResponseBody = typeof responseBody === "string" ? JSON.parse(responseBody) : responseBody
-      } catch {
-        return NextResponse.json(
-          { error: "Response body must be valid JSON" },
-          { status: 400 }
-        )
-      }
-    }
+    const { name, endpoint, method, responseCode, responseBody } = validationResult.data
+    const code = responseCode || existingMock.responseCode
+    const parsedResponseBody = responseBody !== undefined ? responseBody : existingMock.responseBody
+    
+    // Use existing values if not provided in update
+    const finalName = name || existingMock.name
+    const finalEndpoint = endpoint || existingMock.endpoint
+    const finalMethod = method || existingMock.method
 
     // Check if endpoint/method combination already exists for another mock
     if (
-      endpoint !== existingMock.endpoint ||
-      method.toUpperCase() !== existingMock.method
+      finalEndpoint !== existingMock.endpoint ||
+      finalMethod.toUpperCase() !== existingMock.method
     ) {
       const duplicateMock = await prisma.mockApi.findFirst({
         where: {
           userId: user.id,
-          endpoint: endpoint,
-          method: method.toUpperCase(),
+          endpoint: finalEndpoint,
+          method: finalMethod.toUpperCase(),
           id: { not: id }, // Exclude current mock
         },
       })
@@ -133,9 +102,9 @@ export const PUT = withAuthParams(async (request, { id }, user) => {
     const updatedMock = await prisma.mockApi.update({
       where: { id },
       data: {
-        name,
-        endpoint,
-        method: method.toUpperCase(),
+        name: finalName,
+        endpoint: finalEndpoint,
+        method: finalMethod.toUpperCase(),
         responseCode: code,
         responseBody: parsedResponseBody as Prisma.InputJsonValue,
       } as unknown as Prisma.MockApiUpdateInput,

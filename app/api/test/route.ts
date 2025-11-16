@@ -1,33 +1,29 @@
-import { NextRequest, NextResponse } from "next/server"
 import { withAuth } from "@/lib/api-auth"
-import axios, { AxiosError } from "axios"
 import { prisma } from "@/lib/prisma"
-import { ALL_HTTP_METHODS, isValidHttpMethod } from "@/lib/http-methods"
+import { RATE_LIMITS } from "@/lib/rate-limit"
+import axios, { AxiosError, AxiosRequestConfig } from "axios"
+import { NextResponse } from "next/server"
 
-export const POST = withAuth(async (request, user) => {
-
+export const POST = withAuth(
+  async (request, user) => {
     const body = await request.json()
+
+    // Validate and sanitize input using Yup validation + sanitization
+    const { validateAndSanitizeApiTestRequest } = await import("@/lib/input-security")
+    const validationResult = await validateAndSanitizeApiTestRequest(body)
+
+    if (!validationResult.success) {
+      return validationResult.error
+    }
+
     const {
       url,
-      method = "GET",
+      method,
       headers = {},
       queryParams = {},
       requestBody,
-      saveToHistory = true, // Default to true for backward compatibility
-    } = body
-
-    // Validate URL
-    if (!url || typeof url !== "string") {
-      return NextResponse.json({ error: "URL is required" }, { status: 400 })
-    }
-
-    // Validate HTTP method
-    if (!isValidHttpMethod(method) || !ALL_HTTP_METHODS.includes(method.toUpperCase())) {
-      return NextResponse.json(
-        { error: "Invalid HTTP method" },
-        { status: 400 }
-      )
-    }
+      saveToHistory = true,
+    } = validationResult.data
 
     // Build URL with query parameters
     let requestUrl = url
@@ -43,7 +39,7 @@ export const POST = withAuth(async (request, user) => {
 
     // Prepare request config
     const startTime = Date.now()
-    const config: any = {
+    const config: AxiosRequestConfig = {
       method: method.toUpperCase(),
       url: requestUrl,
       headers: {
@@ -65,10 +61,12 @@ export const POST = withAuth(async (request, user) => {
           typeof requestBody === "string"
             ? JSON.parse(requestBody)
             : requestBody
-      } catch (error) {
+      } catch {
         // If parsing fails, send as string
         config.data = requestBody
-        config.headers["Content-Type"] = "text/plain"
+        if (config.headers) {
+          config.headers["Content-Type"] = "text/plain"
+        }
       }
     }
 
@@ -129,4 +127,6 @@ export const POST = withAuth(async (request, user) => {
     }
 
   return NextResponse.json(responseData)
-})
+  },
+  RATE_LIMITS.API_TEST // Stricter rate limit for API testing
+)
