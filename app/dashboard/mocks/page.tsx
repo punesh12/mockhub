@@ -10,11 +10,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Loader2,
   Zap,
   Plus,
   Download,
   Search,
+  Building2,
 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -25,16 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import ConfirmationModal from "@/components/shared/components/ConfirmationModal"
 import { exportToJSON, formatMockForExport } from "@/lib/export-utils"
 import SearchBar from "@/components/shared/components/SearchBar"
 import FilterBadge from "@/components/shared/components/FilterBadge"
@@ -49,6 +40,11 @@ interface Mock {
   method: string
   responseCode: number
   createdAt: string
+  organizationId?: string | null
+  organization?: {
+    id: string
+    name: string
+  } | null
 }
 
 interface Pagination {
@@ -66,6 +62,8 @@ export default function MocksPage() {
   const [searchInput, setSearchInput] = useState("") // For debounced search
   const [methodFilter, setMethodFilter] = useState<string>("")
   const [statusCodeFilter, setStatusCodeFilter] = useState<string>("")
+  const [organizationFilter, setOrganizationFilter] = useState<string>("")
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([])
   const [sortBy, setSortBy] = useState<string>("createdAt")
   const [sortOrder, setSortOrder] = useState<string>("desc")
   const [pagination, setPagination] = useState<Pagination>({
@@ -78,6 +76,22 @@ export default function MocksPage() {
   const [mockToDelete, setMockToDelete] = useState<Mock | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const mocksRef = useRef<Mock[]>([])
+
+  // Fetch organizations on mount
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const response = await fetch("/api/organizations?limit=100")
+        if (response.ok) {
+          const data = await response.json()
+          setOrganizations(data.organizations || [])
+        }
+      } catch (error) {
+        console.error("Error fetching organizations:", error)
+      }
+    }
+    fetchOrganizations()
+  }, [])
 
   // Debounce search input - handled by SearchBar component
   useEffect(() => {
@@ -92,6 +106,7 @@ export default function MocksPage() {
     searchQuery,
     methodFilter,
     statusCodeFilter,
+    organizationFilter,
     sortBy,
     sortOrder,
   ])
@@ -105,6 +120,15 @@ export default function MocksPage() {
       if (searchQuery) params.append("search", searchQuery)
       if (methodFilter) params.append("method", methodFilter)
       if (statusCodeFilter) params.append("statusCode", statusCodeFilter)
+      // Only send organizationId if it's a valid organization ID (not "personal")
+      if (organizationFilter && organizationFilter !== "personal") {
+        params.append("organizationId", organizationFilter)
+      } else if (organizationFilter === "personal") {
+        // For personal mocks, we need to filter by organizationId=null
+        // The API will handle this by default when no organizationId is provided
+        // But we can add a special parameter to explicitly request personal mocks
+        params.append("personalOnly", "true")
+      }
       params.append("sortBy", sortBy)
       params.append("sortOrder", sortOrder)
 
@@ -149,6 +173,11 @@ export default function MocksPage() {
     setPagination((prev) => ({ ...prev, page: 1 }))
   }, [])
 
+  const handleOrganizationFilterChange = useCallback((value: string) => {
+    setOrganizationFilter(value)
+    setPagination((prev) => ({ ...prev, page: 1 }))
+  }, [])
+
   const handleSortChange = useCallback((by: string, order: string) => {
     setSortBy(by)
     setSortOrder(order)
@@ -158,14 +187,15 @@ export default function MocksPage() {
   const clearFilters = useCallback(() => {
     setMethodFilter("")
     setStatusCodeFilter("")
+    setOrganizationFilter("")
     setSearchInput("")
     setSearchQuery("")
     setPagination((prev) => ({ ...prev, page: 1 }))
   }, [])
 
   const hasActiveFilters = useMemo(
-    () => !!(methodFilter || statusCodeFilter || searchQuery || searchInput),
-    [methodFilter, statusCodeFilter, searchQuery, searchInput]
+    () => !!(methodFilter || statusCodeFilter || organizationFilter || searchQuery || searchInput),
+    [methodFilter, statusCodeFilter, organizationFilter, searchQuery, searchInput]
   )
 
   const handlePageChange = useCallback((page: number) => {
@@ -344,6 +374,36 @@ export default function MocksPage() {
                 </SelectContent>
               </Select>
 
+              {organizations.length > 0 && (
+                <Select
+                  value={organizationFilter || "all"}
+                  onValueChange={(value) =>
+                    handleOrganizationFilterChange(value === "all" ? "" : value)
+                  }
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <Building2 className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Organization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Organizations</SelectItem>
+                    <SelectItem value="personal">
+                      <div className="flex items-center gap-2">
+                        <span>Personal</span>
+                      </div>
+                    </SelectItem>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-3 w-3" />
+                          <span>{org.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               <Select
                 value={`${sortBy}-${sortOrder}`}
                 onValueChange={(value) => {
@@ -392,6 +452,17 @@ export default function MocksPage() {
                   label="Status"
                   value={statusCodeFilter}
                   onRemove={() => handleStatusCodeFilterChange("")}
+                />
+              )}
+              {organizationFilter && (
+                <FilterBadge
+                  label="Organization"
+                  value={
+                    organizationFilter === "personal"
+                      ? "Personal"
+                      : organizations.find((o) => o.id === organizationFilter)?.name || organizationFilter
+                  }
+                  onRemove={() => handleOrganizationFilterChange("")}
                 />
               )}
               {searchQuery && (
@@ -513,35 +584,23 @@ export default function MocksPage() {
         </motion.div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Mock API?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{mockToDelete?.name}&quot;? This
-              action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Mock API?"
+        description={
+          <>
+            Are you sure you want to delete <strong>&quot;{mockToDelete?.name}&quot;</strong>? This
+            action cannot be undone.
+          </>
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteConfirm}
+        isLoading={isDeleting}
+        variant="destructive"
+      />
     </div>
   )
 }

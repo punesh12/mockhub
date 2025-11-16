@@ -21,6 +21,7 @@ import {
   Copy,
   ExternalLink,
   MoreVertical,
+  Building2,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import StatusBadge from "./StatusBadge"
@@ -34,6 +35,11 @@ export interface MockCardData {
   method: string
   responseCode: number
   createdAt: string
+  organizationId?: string | null
+  organization?: {
+    id: string
+    name: string
+  } | null
 }
 
 interface MockCardProps {
@@ -131,6 +137,16 @@ const MockCard = ({
               className="h-5 w-5 p-0 hover:bg-primary/10 shrink-0"
             />
           </div>
+
+          {/* Organization Name Row */}
+          {mock.organization && (
+            <div className="flex items-center gap-1.5 pt-0.5">
+              <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-[10px] text-muted-foreground truncate">
+                {mock.organization.name}
+              </span>
+            </div>
+          )}
 
           {/* Bottom Row: Date + Actions */}
           <div className="flex items-center justify-between gap-2 pt-0.5">

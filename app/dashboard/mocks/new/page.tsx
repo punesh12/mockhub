@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -26,25 +26,61 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Loader2, ArrowLeft, Sparkles, Eye, ChevronDown } from "lucide-react"
+import { Loader2, ArrowLeft, Sparkles, Eye, ChevronDown, Building2 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { generateMockData, type MockTemplate } from "@/lib/mock-generator"
 import { COMMON_HTTP_METHODS } from "@/lib/http-methods"
 import { HTTP_STATUS_CODES } from "@/lib/http-status-codes"
 
-export default function CreateMockPage() {
+interface Organization {
+  id: string
+  name: string
+  slug: string
+  userRole: string | null
+}
+
+function CreateMockPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
     name: "",
     endpoint: "",
     method: "GET",
     responseCode: 200,
     responseBody: "{}",
+    organizationId: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [isLoadingOrgs, setIsLoadingOrgs] = useState(true)
+
+  // Fetch organizations and pre-fill organizationId from query params
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const response = await fetch("/api/organizations?limit=100")
+        if (response.ok) {
+          const data = await response.json()
+          setOrganizations(data.organizations || [])
+        }
+      } catch (error) {
+        console.error("Error fetching organizations:", error)
+      } finally {
+        setIsLoadingOrgs(false)
+      }
+    }
+
+    fetchOrganizations()
+
+    // Pre-fill organizationId from query params
+    const orgIdParam = searchParams.get("organizationId")
+    if (orgIdParam) {
+      setFormData((prev) => ({ ...prev, organizationId: orgIdParam }))
+    }
+  }, [searchParams])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -93,8 +129,12 @@ export default function CreateMockPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...formData,
+          name: formData.name,
+          endpoint: formData.endpoint,
+          method: formData.method,
+          responseCode: formData.responseCode,
           responseBody: JSON.parse(formData.responseBody),
+          ...(formData.organizationId && { organizationId: formData.organizationId }),
         }),
       })
 
@@ -106,7 +146,17 @@ export default function CreateMockPage() {
       }
 
 
-      router.push("/dashboard/mocks")
+      // Redirect based on whether mock was created for an organization
+      if (formData.organizationId) {
+        const org = organizations.find((o) => o.id === formData.organizationId)
+        if (org?.slug) {
+          router.push(`/dashboard/organizations/${org.slug}`)
+        } else {
+          router.push(`/dashboard/organizations/${formData.organizationId}`)
+        }
+      } else {
+        router.push("/dashboard/mocks")
+      }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setErrors({ submit: "Network error. Please try again." })
@@ -196,6 +246,49 @@ export default function CreateMockPage() {
                   {formData.endpoint || "/..."}
                 </p>
               </div>
+
+              {/* Organization Selector */}
+              {organizations.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="organization">Organization (Optional)</Label>
+                  <Select
+                    value={formData.organizationId || "personal"}
+                    onValueChange={(value) =>
+                      handleChange("organizationId", value === "personal" ? "" : value)
+                    }
+                    disabled={isLoading || isLoadingOrgs}
+                  >
+                    <SelectTrigger id="organization">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="personal">
+                        <div className="flex items-center gap-2">
+                          <span>Personal</span>
+                        </div>
+                      </SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            <span>{org.name}</span>
+                            {org.userRole && (
+                              <Badge variant="outline" className="ml-auto text-xs">
+                                {org.userRole}
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.organizationId
+                      ? "Mock will be created in the selected organization"
+                      : "Mock will be created in your personal collection"}
+                  </p>
+                </div>
+              )}
 
               {/* Method and Status Code */}
               <div className="grid gap-4 md:grid-cols-2">
@@ -385,5 +478,19 @@ export default function CreateMockPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function CreateMockPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <CreateMockPageContent />
+    </Suspense>
   )
 }

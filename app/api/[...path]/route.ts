@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { getServerUser } from "@/lib/supabase-auth"
+import { checkOrganizationAccess } from "@/lib/organization-auth"
+import { Prisma } from "@prisma/client"
 
 /**
  * Catch-all route handler for executing mock APIs
@@ -68,10 +71,6 @@ async function handleMockRequest(
   try {
     const { path } = await params
 
-    // Reconstruct the endpoint path
-    // path will be an array like ["users"] or ["users", "123"]
-    const endpoint = "/" + path.join("/")
-
     // Skip if this is a reserved route
     const reservedRoutes = [
       "mocks",
@@ -80,40 +79,195 @@ async function handleMockRequest(
       "history",
       "health",
       "test-db",
+      "organizations",
+      "user",
+      "dashboard",
     ]
     if (path.length > 0 && reservedRoutes.includes(path[0])) {
       // Let Next.js handle reserved routes normally
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
 
-    // Look up the mock API by endpoint and method
-    const mock = await prisma.mockApi.findFirst({
-      where: {
-        endpoint: endpoint,
-        method: method.toUpperCase(),
-      },
-      select: {
-        id: true,
-        name: true,
-        responseBody: true,
-        responseCode: true,
-        userId: true,
-      },
-    })
+    // Check if this is an organization-scoped endpoint: /api/org/[slug]/[endpoint]
+    let organizationId: string | null = null
+    let endpoint: string
+    let isOrganizationScoped = false
 
-    if (!mock) {
+    if (path.length >= 2 && (path[0] === "org" || path[0] === "organizations")) {
+      // Organization-scoped endpoint: /api/org/[slug]/[endpoint...]
+      isOrganizationScoped = true
+      const organizationSlug = path[1]
+      const endpointParts = path.slice(2)
+      endpoint = "/" + endpointParts.join("/")
+
+      // Find organization by slug
+      // @ts-expect-error - Organization model exists in Prisma schema
+      const organization = await prisma.organization.findUnique({
+        where: { slug: organizationSlug },
+        select: { id: true, visibility: true },
+      })
+
+      if (!organization) {
+        return NextResponse.json(
+          {
+            error: "Organization not found",
+            message: `Organization with slug "${organizationSlug}" not found`,
+          },
+          { status: 404 }
+        )
+      }
+
+      organizationId = organization.id
+
+      // Check access for private organizations
+      if (organization.visibility === "private") {
+        const user = await getServerUser()
+        if (!user) {
+          return NextResponse.json(
+            {
+              error: "Unauthorized",
+              message: "This organization is private. Authentication required.",
+            },
+            { status: 401 }
+          )
+        }
+
+        const access = await checkOrganizationAccess(user.id, organization.id)
+        if (!access.hasAccess) {
+          return NextResponse.json(
+            {
+              error: "Forbidden",
+              message: "You don't have access to this organization's mocks",
+            },
+            { status: 403 }
+          )
+        }
+      }
+      // Public organizations are accessible without authentication
+    } else {
+      // Regular endpoint: /api/[endpoint...]
+      endpoint = "/" + path.join("/")
+    }
+
+    // Look up the mock API by endpoint, method, and organization
+    let mock: unknown = null
+
+    if (isOrganizationScoped) {
+      // For organization-scoped endpoints, only look for mocks in that organization
+      mock = await prisma.mockApi.findFirst({
+        where: {
+          endpoint: endpoint,
+          method: method.toUpperCase(),
+          organizationId: organizationId,
+        } as Prisma.MockApiWhereInput,
+        include: {
+          organization: {
+            select: {
+              id: true,
+              visibility: true,
+            },
+          },
+        } as Prisma.MockApiInclude,
+      })
+    } else {
+      // For regular endpoints, check in this order:
+      // 1. Personal mocks (no organization)
+      // 2. Public organization mocks
+      mock = await prisma.mockApi.findFirst({
+        where: {
+          endpoint: endpoint,
+          method: method.toUpperCase(),
+          organizationId: null,
+        } as Prisma.MockApiWhereInput,
+        include: {
+          organization: {
+            select: {
+              id: true,
+              visibility: true,
+            },
+          },
+        } as Prisma.MockApiInclude,
+      })
+
+      // If not found, check public organization mocks
+      if (!mock) {
+        const publicOrgMocks = await prisma.mockApi.findMany({
+          where: {
+            endpoint: endpoint,
+            method: method.toUpperCase(),
+            organizationId: { not: null },
+            organization: {
+              visibility: "public",
+            },
+          } as Prisma.MockApiWhereInput,
+          include: {
+            organization: {
+              select: {
+                id: true,
+                visibility: true,
+              },
+            },
+          } as Prisma.MockApiInclude,
+          take: 1,
+        })
+
+        if (publicOrgMocks.length > 0) {
+          mock = publicOrgMocks[0]
+        }
+      }
+    }
+
+    if (!mock || typeof mock !== "object" || mock === null) {
       return NextResponse.json(
         {
           error: "Mock API not found",
-          message: `No mock found for ${method} ${endpoint}`,
+          message: `No mock found for ${method} ${endpoint}${isOrganizationScoped ? ` in this organization` : ""}`,
         },
         { status: 404 }
       )
     }
 
+    const mockData = mock as {
+      id: string
+      name: string
+      responseBody: unknown
+      responseCode: number
+      userId: string
+      organizationId: string | null
+      organization: {
+        id: string
+        visibility: string
+      } | null
+    }
+
+    // If mock belongs to a private organization, check access
+    if (mockData.organization && mockData.organization.visibility === "private") {
+      const user = await getServerUser()
+      if (!user) {
+        return NextResponse.json(
+          {
+            error: "Unauthorized",
+            message: "This mock belongs to a private organization. Authentication required.",
+          },
+          { status: 401 }
+        )
+      }
+
+      const access = await checkOrganizationAccess(user.id, mockData.organization.id)
+      if (!access.hasAccess) {
+        return NextResponse.json(
+          {
+            error: "Forbidden",
+            message: "You don't have access to this organization's mocks",
+          },
+          { status: 403 }
+        )
+      }
+    }
+
     // Return the mock response with the configured status code and CORS headers
-    return NextResponse.json(mock.responseBody, {
-      status: mock.responseCode,
+    return NextResponse.json(mockData.responseBody, {
+      status: mockData.responseCode,
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS",
