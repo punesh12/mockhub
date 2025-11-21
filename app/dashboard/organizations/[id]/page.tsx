@@ -22,11 +22,14 @@ import {
   Lock,
   ArrowLeft,
   Trash2,
+  FileText,
+  Download,
 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import ConfirmationModal from "@/components/shared/components/ConfirmationModal"
 import MockCard from "@/components/shared/components/MockCard"
+import ImportOpenApiModal from "@/components/organizations/ImportOpenApiModal"
 
 interface Organization {
   id: string
@@ -80,6 +83,7 @@ export default function OrganizationDetailPage() {
   const [isLeaving, setIsLeaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [importModalOpen, setImportModalOpen] = useState(false)
 
   useEffect(() => {
     // Fetch current user
@@ -396,21 +400,105 @@ export default function OrganizationDetailPage() {
           transition={{ delay: 0.2 }}
           className="lg:col-span-2 space-y-4"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h2 className="text-xl font-semibold">Mock APIs</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
                 Manage organization mock endpoints
               </p>
             </div>
-            {canManage && (
-              <Button asChild variant="gradient" size="lg">
-                  <Link href={`/dashboard/mocks/new?organizationId=${organization?.id || ""}`}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Mock
-                </Link>
-              </Button>
-            )}
+            <div className="flex gap-2 flex-wrap">
+              {organization._count.mocks > 0 && (
+                <>
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="lg"
+                  >
+                    <Link
+                      href={`/organizations/${organizationSlug}/docs`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      View API Docs
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(
+                          `/api/organizations/${organizationSlug}/openapi?format=json`
+                        )
+                        const blob = await response.blob()
+                        const url = window.URL.createObjectURL(blob)
+                        const a = document.createElement("a")
+                        a.href = url
+                        a.download = `${organization.slug}-openapi.json`
+                        document.body.appendChild(a)
+                        a.click()
+                        window.URL.revokeObjectURL(url)
+                        document.body.removeChild(a)
+                        toast.success("OpenAPI spec downloaded")
+                      } catch (error) {
+                        console.error("Error downloading OpenAPI spec:", error)
+                        toast.error("Failed to download OpenAPI spec")
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download JSON
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(
+                          `/api/organizations/${organizationSlug}/openapi?format=yaml`
+                        )
+                        const blob = await response.blob()
+                        const url = window.URL.createObjectURL(blob)
+                        const a = document.createElement("a")
+                        a.href = url
+                        a.download = `${organization.slug}-openapi.yaml`
+                        document.body.appendChild(a)
+                        a.click()
+                        window.URL.revokeObjectURL(url)
+                        document.body.removeChild(a)
+                        toast.success("OpenAPI spec downloaded")
+                      } catch (error) {
+                        console.error("Error downloading OpenAPI spec:", error)
+                        toast.error("Failed to download OpenAPI spec")
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download YAML
+                  </Button>
+                </>
+              )}
+              {canManage && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setImportModalOpen(true)}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Import OpenAPI
+                  </Button>
+                  <Button asChild variant="gradient" size="lg">
+                    <Link href={`/dashboard/mocks/new?organizationId=${organization?.id || ""}`}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Mock
+                    </Link>
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           {isLoadingMocks ? (
@@ -601,6 +689,20 @@ export default function OrganizationDetailPage() {
         isLoading={isDeleting}
         variant="destructive"
       />
+
+      {/* Import OpenAPI Modal */}
+      {organization && (
+        <ImportOpenApiModal
+          open={importModalOpen}
+          onOpenChange={setImportModalOpen}
+          organizationId={organization.id}
+          organizationSlug={organizationSlug}
+          onSuccess={() => {
+            fetchMocks()
+            fetchOrganization()
+          }}
+        />
+      )}
     </div>
   )
 }
