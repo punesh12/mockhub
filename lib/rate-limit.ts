@@ -43,6 +43,12 @@ export const RATE_LIMITS = {
     maxRequests: 5, // 5 requests per 15 minutes
     message: "Too many authentication attempts. Please try again later.",
   },
+  // Forgot password endpoint - more lenient (users may need multiple attempts)
+  FORGOT_PASSWORD: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 10, // 10 requests per hour
+    message: "Too many password reset requests. Please try again later.",
+  },
   // API endpoints - moderate limits
   API: {
     windowMs: 60 * 1000, // 1 minute
