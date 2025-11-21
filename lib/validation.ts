@@ -176,6 +176,20 @@ export const changePasswordSchema = yup
       .required("Confirm password is required")
       .oneOf([yup.ref("newPassword")], "Passwords do not match"),
   })
+
+// Forgot password schema
+export const forgotPasswordSchema = yup.object({
+  email: emailSchema,
+})
+
+// Reset password schema
+export const resetPasswordSchema = yup.object({
+  password: passwordSchema,
+  confirmPassword: yup
+    .string()
+    .required("Please confirm your password")
+    .oneOf([yup.ref("password")], "Passwords must match"),
+})
   .required()
 
 // Invite member schema

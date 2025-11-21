@@ -33,7 +33,30 @@ This document outlines all tasks to be completed for the MockHub project.
   - [x] Add loading states
   - [x] Add success redirect to dashboard
   - [x] Modern UI with shadcn/ui components
-  - [ ] Add "Forgot Password" link (future feature)
+  - [x] Add "Forgot Password" link
+  - [x] Add "Forgot Password" functionality
+
+- [x] **Forgot Password Page** (`/app/auth/forgot-password/page.tsx`)
+  - [x] Create forgot password form with email field
+  - [x] Add form validation
+  - [x] Add error handling and display
+  - [x] Add loading states
+  - [x] Add success message after email sent
+  - [x] Add "Back to Login" link
+  - [x] Modern UI with shadcn/ui components
+  - [x] ES6 arrow function format
+
+- [x] **Reset Password Page** (`/app/auth/reset-password/page.tsx`)
+  - [x] Create reset password form
+  - [x] Validate reset token from URL hash (Supabase flow)
+  - [x] Add password and confirm password fields
+  - [x] Add password strength validation
+  - [x] Add validation
+  - [x] Add error handling
+  - [x] Add loading states
+  - [x] Add success redirect to login
+  - [x] Modern UI with shadcn/ui components
+  - [x] ES6 arrow function format
 
 ### Backend API Routes
 
@@ -57,6 +80,20 @@ This document outlines all tasks to be completed for the MockHub project.
 - [x] **Get User API** (`/app/api/auth/me/route.ts`)
   - [x] Get current user session
   - [x] Return user data
+
+- [x] **Forgot Password API** (`/app/api/auth/forgot-password/route.ts`)
+  - [x] Validate email address
+  - [x] Send password reset email via Supabase Auth
+  - [x] Return success response (prevents email enumeration)
+  - [x] Add rate limiting for security (separate FORGOT_PASSWORD limit: 10 requests/hour)
+  - [x] Configurable redirect URL
+
+- [x] **Reset Password API** (`/app/api/auth/reset-password/route.ts`)
+  - [x] Validate reset token (session-based)
+  - [x] Validate new password strength
+  - [x] Update password via Supabase Auth
+  - [x] Return success response
+  - [x] Add rate limiting for security
 
 ### Supabase Auth Setup (Replaces NextAuth)
 
@@ -812,15 +849,82 @@ This document outlines all tasks to be completed for the MockHub project.
 
 ---
 
+## 📘 Swagger/OpenAPI Documentation for Organizations
+
+### Organization API Documentation
+
+- [ ] **Swagger/OpenAPI Export for Organizations**
+  - [ ] Create API endpoint to generate OpenAPI spec for organization mocks
+  - [ ] **GET /api/organizations/[id]/openapi** - Generate OpenAPI 3.0 spec
+    - [ ] Aggregate all mocks in organization
+    - [ ] Generate paths, methods, responses from mock APIs
+    - [ ] Include response schemas from mock responseBody
+    - [ ] Add organization metadata (name, description)
+    - [ ] Support both JSON and YAML formats
+  - [ ] Add "View API Docs" button on organization page
+  - [ ] Add "Download OpenAPI Spec" button
+  - [ ] Create shareable public URL for organization API docs
+  - [ ] Support Swagger UI rendering
+
+- [ ] **Public API Documentation Page**
+  - [ ] **GET /app/organizations/[slug]/docs/page.tsx** - Public API docs page
+    - [ ] Display organization API documentation
+    - [ ] Render Swagger UI with organization's mocks
+    - [ ] Show all endpoints, methods, and responses
+    - [ ] Allow testing endpoints directly from docs
+    - [ ] Add "Try it out" functionality
+    - [ ] Support for public organizations only (or authenticated access)
+  - [ ] Add copy button for API documentation URL
+  - [ ] Add embed option for documentation
+
+- [ ] **Swagger/OpenAPI Import**
+  - [ ] **POST /api/organizations/[id]/import-openapi** - Import OpenAPI spec
+    - [ ] Parse OpenAPI/Swagger JSON or YAML
+    - [ ] Extract paths, methods, responses
+    - [ ] Create mock APIs from OpenAPI spec
+    - [ ] Map OpenAPI responses to mock responseBody
+    - [ ] Support OpenAPI 3.0 and Swagger 2.0
+    - [ ] Handle validation errors gracefully
+  - [ ] Add "Import from OpenAPI" button on organization page
+  - [ ] Create import modal with file upload
+  - [ ] Show preview of mocks to be created
+  - [ ] Allow selective import (choose which endpoints to import)
+
+- [ ] **OpenAPI Utilities** (`/lib/openapi-utils.ts`)
+  - [ ] `generateOpenApiSpec(organizationId, mocks)` - Generate OpenAPI spec
+  - [ ] `parseOpenApiSpec(file)` - Parse OpenAPI/Swagger file
+  - [ ] `createMocksFromOpenApi(spec, organizationId)` - Create mocks from spec
+  - [ ] `validateOpenApiSpec(spec)` - Validate OpenAPI spec format
+  - [ ] Support for OpenAPI 3.0 and Swagger 2.0 formats
+
+- [ ] **UI Components**
+  - [ ] **OpenApiDocsViewer** (`/components/organizations/OpenApiDocsViewer.tsx`)
+    - [ ] Display Swagger UI for organization APIs
+    - [ ] Support dark mode
+    - [ ] Add copy/share functionality
+  - [ ] **ImportOpenApiModal** (`/components/organizations/ImportOpenApiModal.tsx`)
+    - [ ] File upload for OpenAPI spec
+    - [ ] Preview of mocks to be created
+    - [ ] Select endpoints to import
+    - [ ] Show import progress
+
+- [ ] **Dependencies**
+  - [ ] Install `swagger-parser` for parsing OpenAPI specs
+  - [ ] Install `swagger-ui-react` for documentation rendering
+  - [ ] Install `yaml` for YAML parsing
+  - [ ] Install `openapi-types` for TypeScript types
+
+---
+
 ## 🎯 Future Enhancements (Optional)
 
 ### Advanced Features
 
-- [ ] Public sharing of mocks
+- [ ] Public sharing of individual mocks (beyond organizations)
 - [ ] Team collaboration & shared collections
 - [ ] AI-assisted mock response generation (OpenAI)
-- [ ] Rate limiting and request analytics
-- [ ] Swagger schema import/export
+- [x] Rate limiting and request analytics (completed)
+- [x] Swagger schema import/export (in progress - see above)
 - [ ] Chrome extension for quick testing
 - [ ] WebSocket support for live API responses
 - [ ] Custom domain mapping for premium users
@@ -918,3 +1022,18 @@ This document outlines all tasks to be completed for the MockHub project.
     - ✅ Organization list page search and filters (search, visibility, role)
     - ✅ Search API integration with debouncing
     - [x] Organization-scoped mock API execution (completed)
+16. ✅ **Forgot Password Feature** - COMPLETED
+    - ✅ Forgot Password API endpoint
+    - ✅ Reset Password API endpoint
+    - ✅ Forgot Password page
+    - ✅ Reset Password page
+    - ✅ Add "Forgot Password" link to login page
+    - ✅ Separate rate limiting for forgot password (10 requests/hour)
+    - ✅ ES6 arrow function format
+    - ✅ Supabase Auth integration with token validation
+17. 🔄 **Swagger/OpenAPI Documentation for Organizations** - IN PROGRESS
+    - [ ] Generate OpenAPI spec from organization mocks
+    - [ ] Public API documentation page for organizations
+    - [ ] Import OpenAPI spec to create mocks
+    - [ ] Swagger UI integration
+    - [ ] Shareable API documentation URLs

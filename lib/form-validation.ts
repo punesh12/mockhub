@@ -17,6 +17,8 @@ import {
   changePasswordSchema,
   inviteMemberSchema,
   apiTestRequestSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "./validation"
 
 /**
@@ -109,6 +111,12 @@ export const inviteMemberFormSchema = inviteMemberSchema
 // API Test form schema
 export const apiTestFormSchema = apiTestRequestSchema
 
+// Forgot Password form schema
+export const forgotPasswordFormSchema = forgotPasswordSchema
+
+// Reset Password form schema
+export const resetPasswordFormSchema = resetPasswordSchema
+
 /**
  * Type inference helpers for form data
  */
@@ -122,4 +130,6 @@ export type UpdateProfileFormData = yup.InferType<typeof updateProfileFormSchema
 export type ChangePasswordFormData = yup.InferType<typeof changePasswordFormSchema>
 export type InviteMemberFormData = yup.InferType<typeof inviteMemberFormSchema>
 export type ApiTestFormData = yup.InferType<typeof apiTestFormSchema>
+export type ForgotPasswordFormData = yup.InferType<typeof forgotPasswordFormSchema>
+export type ResetPasswordFormData = yup.InferType<typeof resetPasswordFormSchema>
 
