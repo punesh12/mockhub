@@ -1,7 +1,13 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Optimize for production
+  reactStrictMode: true,
+  
+  // Optimize images
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
 }
 
 export default nextConfig
