@@ -752,21 +752,43 @@ This document outlines all tasks to be completed for the MockHub project.
 
 ### API Documentation
 
-- [ ] Document all API endpoints
-- [ ] Add request/response examples
-- [ ] Create API testing collection (Postman/Insomnia)
+- [x] Document all API endpoints
+  - [x] Created comprehensive API_DOCUMENTATION.md
+  - [x] Documented all endpoints with methods, authentication, rate limits
+- [x] Add request/response examples
+  - [x] Request examples for all endpoints
+  - [x] Response examples with status codes
+  - [x] Error response examples
+- [ ] Create API testing collection (Postman/Insomnia) - Optional
 
 ### Security
 
-- [ ] Add rate limiting
+- [x] Add rate limiting
+  - [x] In-memory rate limiting system
+  - [x] Different limits for AUTH, API, MOCK_API, API_TEST endpoints
+  - [x] Separate FORGOT_PASSWORD rate limit (10 requests/hour)
+  - [x] Rate limit headers in responses
+  - [x] User ID and IP-based rate limiting
 - [x] Add CORS configuration
   - [x] Add CORS headers to mock API responses
   - [x] Add OPTIONS handler for preflight requests
   - [x] Enable cross-origin requests for API testing
-- [ ] Add input sanitization
-- [ ] Add SQL injection prevention
-- [ ] Add XSS protection
-- [ ] Add CSRF protection
+- [x] Add input sanitization
+  - [x] String sanitization (XSS prevention)
+  - [x] URL sanitization
+  - [x] JSON sanitization (prototype pollution prevention)
+  - [x] Email sanitization
+  - [x] Endpoint sanitization (path traversal prevention)
+  - [x] SQL input sanitization
+- [x] Add SQL injection prevention
+  - [x] Prisma ORM (parameterized queries)
+  - [x] Input sanitization for SQL-like patterns
+  - [x] Input validation with Yup schemas
+- [x] Add XSS protection
+  - [x] String sanitization utilities
+  - [x] HTML entity encoding
+  - [x] Input validation
+- [ ] Add CSRF protection (future enhancement - Next.js has built-in CSRF protection)
 
 ---
 
@@ -853,66 +875,73 @@ This document outlines all tasks to be completed for the MockHub project.
 
 ### Organization API Documentation
 
-- [ ] **Swagger/OpenAPI Export for Organizations**
-  - [ ] Create API endpoint to generate OpenAPI spec for organization mocks
-  - [ ] **GET /api/organizations/[id]/openapi** - Generate OpenAPI 3.0 spec
-    - [ ] Aggregate all mocks in organization
-    - [ ] Generate paths, methods, responses from mock APIs
-    - [ ] Include response schemas from mock responseBody
-    - [ ] Add organization metadata (name, description)
-    - [ ] Support both JSON and YAML formats
-  - [ ] Add "View API Docs" button on organization page
-  - [ ] Add "Download OpenAPI Spec" button
-  - [ ] Create shareable public URL for organization API docs
-  - [ ] Support Swagger UI rendering
+- [x] **Swagger/OpenAPI Export for Organizations**
+  - [x] Create API endpoint to generate OpenAPI spec for organization mocks
+  - [x] **GET /api/organizations/[id]/openapi** - Generate OpenAPI 3.0 spec
+    - [x] Aggregate all mocks in organization
+    - [x] Generate paths, methods, responses from mock APIs
+    - [x] Include response schemas from mock responseBody
+    - [x] Add organization metadata (name, description)
+    - [x] Support both JSON and YAML formats
+    - [x] Use organization-scoped paths (/api/org/[slug]/[endpoint])
+  - [x] Add "View API Docs" button on organization page
+  - [x] Add "Download OpenAPI Spec" button (JSON and YAML)
+  - [x] Create shareable public URL for organization API docs
+  - [x] Support Swagger UI rendering
 
-- [ ] **Public API Documentation Page**
-  - [ ] **GET /app/organizations/[slug]/docs/page.tsx** - Public API docs page
-    - [ ] Display organization API documentation
-    - [ ] Render Swagger UI with organization's mocks
-    - [ ] Show all endpoints, methods, and responses
-    - [ ] Allow testing endpoints directly from docs
-    - [ ] Add "Try it out" functionality
-    - [ ] Support for public organizations only (or authenticated access)
-  - [ ] Add copy button for API documentation URL
-  - [ ] Add embed option for documentation
+- [x] **Public API Documentation Page**
+  - [x] **GET /app/organizations/[slug]/docs/page.tsx** - Public API docs page
+    - [x] Display organization API documentation
+    - [x] Render Swagger UI with organization's mocks
+    - [x] Show all endpoints, methods, and responses
+    - [x] Allow testing endpoints directly from docs
+    - [x] Add "Try it out" functionality
+    - [x] Support for public organizations (and authenticated access for private)
+  - [x] Add copy button for API documentation URL
+  - [x] Add share functionality
+  - [x] Dark mode support with proper text colors
+  - [ ] Add embed option for documentation (future enhancement)
 
-- [ ] **Swagger/OpenAPI Import**
-  - [ ] **POST /api/organizations/[id]/import-openapi** - Import OpenAPI spec
-    - [ ] Parse OpenAPI/Swagger JSON or YAML
-    - [ ] Extract paths, methods, responses
-    - [ ] Create mock APIs from OpenAPI spec
-    - [ ] Map OpenAPI responses to mock responseBody
-    - [ ] Support OpenAPI 3.0 and Swagger 2.0
-    - [ ] Handle validation errors gracefully
-  - [ ] Add "Import from OpenAPI" button on organization page
-  - [ ] Create import modal with file upload
-  - [ ] Show preview of mocks to be created
-  - [ ] Allow selective import (choose which endpoints to import)
+- [x] **Swagger/OpenAPI Import**
+  - [x] **POST /api/organizations/[id]/import-openapi** - Import OpenAPI spec
+    - [x] Parse OpenAPI/Swagger JSON or YAML
+    - [x] Extract paths, methods, responses
+    - [x] Create mock APIs from OpenAPI spec
+    - [x] Map OpenAPI responses to mock responseBody
+    - [x] Support OpenAPI 3.0 (Swagger 2.0 support planned)
+    - [x] Handle validation errors gracefully
+  - [x] Add "Import from OpenAPI" button on organization page
+  - [x] Create import modal with file upload
+  - [x] Show preview of mocks to be created
+  - [x] Allow selective import (choose which endpoints to import)
+  - [x] Show import progress and results
 
-- [ ] **OpenAPI Utilities** (`/lib/openapi-utils.ts`)
-  - [ ] `generateOpenApiSpec(organizationId, mocks)` - Generate OpenAPI spec
-  - [ ] `parseOpenApiSpec(file)` - Parse OpenAPI/Swagger file
-  - [ ] `createMocksFromOpenApi(spec, organizationId)` - Create mocks from spec
-  - [ ] `validateOpenApiSpec(spec)` - Validate OpenAPI spec format
-  - [ ] Support for OpenAPI 3.0 and Swagger 2.0 formats
+- [x] **OpenAPI Utilities** (`/lib/openapi-utils.ts`)
+  - [x] `generateOpenApiSpec(organization, mocks, baseUrl, useOrganizationScopedPaths)` - Generate OpenAPI spec
+  - [x] `parseOpenApiSpec(fileContent, fileType)` - Parse OpenAPI/Swagger file
+  - [x] `extractMocksFromOpenApi(spec)` - Extract mocks from spec
+  - [x] `validateOpenApiSpec(spec)` - Validate OpenAPI spec format
+  - [x] `specToJson(spec)` - Convert spec to JSON
+  - [x] `specToYaml(spec)` - Convert spec to YAML
+  - [x] Support for OpenAPI 3.0 (Swagger 2.0 support planned)
+  - [x] ES6 arrow function format
 
-- [ ] **UI Components**
-  - [ ] **OpenApiDocsViewer** (`/components/organizations/OpenApiDocsViewer.tsx`)
-    - [ ] Display Swagger UI for organization APIs
-    - [ ] Support dark mode
-    - [ ] Add copy/share functionality
-  - [ ] **ImportOpenApiModal** (`/components/organizations/ImportOpenApiModal.tsx`)
-    - [ ] File upload for OpenAPI spec
-    - [ ] Preview of mocks to be created
-    - [ ] Select endpoints to import
-    - [ ] Show import progress
+- [x] **UI Components**
+  - [x] **Public API Docs Page** (`/app/organizations/[slug]/docs/page.tsx`)
+    - [x] Display Swagger UI for organization APIs
+    - [x] Support dark mode with proper text colors
+    - [x] Add copy/share functionality
+  - [x] **ImportOpenApiModal** (`/components/organizations/ImportOpenApiModal.tsx`)
+    - [x] File upload for OpenAPI spec
+    - [x] Preview of mocks to be created
+    - [x] Select endpoints to import
+    - [x] Show import progress and results
 
-- [ ] **Dependencies**
-  - [ ] Install `swagger-parser` for parsing OpenAPI specs
-  - [ ] Install `swagger-ui-react` for documentation rendering
-  - [ ] Install `yaml` for YAML parsing
-  - [ ] Install `openapi-types` for TypeScript types
+- [x] **Dependencies**
+  - [x] Install `swagger-parser` for parsing OpenAPI specs
+  - [x] Install `swagger-ui-react` for documentation rendering
+  - [x] Install `yaml` for YAML parsing
+  - [x] Install `openapi-types` for TypeScript types
 
 ---
 
@@ -1031,9 +1060,12 @@ This document outlines all tasks to be completed for the MockHub project.
     - ✅ Separate rate limiting for forgot password (10 requests/hour)
     - ✅ ES6 arrow function format
     - ✅ Supabase Auth integration with token validation
-17. 🔄 **Swagger/OpenAPI Documentation for Organizations** - IN PROGRESS
-    - [ ] Generate OpenAPI spec from organization mocks
-    - [ ] Public API documentation page for organizations
-    - [ ] Import OpenAPI spec to create mocks
-    - [ ] Swagger UI integration
-    - [ ] Shareable API documentation URLs
+17. ✅ **Swagger/OpenAPI Documentation for Organizations** - COMPLETED
+    - ✅ Generate OpenAPI spec from organization mocks
+    - ✅ Public API documentation page for organizations
+    - ✅ Import OpenAPI spec to create mocks
+    - ✅ Swagger UI integration with dark mode support
+    - ✅ Shareable API documentation URLs
+    - ✅ Organization-scoped API paths (/api/org/[slug]/[endpoint])
+    - ✅ Download OpenAPI specs in JSON/YAML formats
+    - ✅ Selective import with preview functionality
