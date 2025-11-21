@@ -1,19 +1,19 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, Copy, Share2, Globe, Lock } from "lucide-react"
-import Link from "next/link"
+import { Skeleton } from "@/components/ui/skeleton"
 import { motion } from "framer-motion"
+import { ArrowLeft, Copy, Globe, Lock, Share2 } from "lucide-react"
 import dynamic from "next/dynamic"
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import "swagger-ui-react/swagger-ui.css"
 
 // Dynamically import SwaggerUI to avoid SSR issues
 const SwaggerUI = dynamic(() => import("swagger-ui-react"), { ssr: false })
-import "swagger-ui-react/swagger-ui.css"
 
 interface Organization {
   id: string
@@ -25,11 +25,10 @@ interface Organization {
 
 const OrganizationDocsPage = () => {
   const params = useParams()
-  const router = useRouter()
   const slug = params.slug as string
 
   const [organization, setOrganization] = useState<Organization | null>(null)
-  const [openApiSpec, setOpenApiSpec] = useState<unknown>(null)
+  const [openApiSpec, setOpenApiSpec] = useState<Record<string, unknown> | string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -194,7 +193,7 @@ const OrganizationDocsPage = () => {
         <Card>
           <CardContent className="p-0">
             <div className="swagger-ui-wrapper">
-              {openApiSpec && (
+              {openApiSpec ? (
                 <SwaggerUI
                   spec={openApiSpec}
                   deepLinking={true}
@@ -206,7 +205,7 @@ const OrganizationDocsPage = () => {
                   showExtensions={true}
                   showCommonExtensions={true}
                 />
-              )}
+              ) : null}
             </div>
           </CardContent>
         </Card>

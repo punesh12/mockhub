@@ -2,7 +2,6 @@ import { withAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import {
-  checkOrganizationAccess,
   canManageMembers,
 } from "@/lib/organization-auth"
 
@@ -17,7 +16,6 @@ export const PUT = withAuth(async (request, user, { params }) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     
     // Find organization by id or slug
-    // @ts-expect-error - Organization model exists in Prisma schema
     const orgLookup = await prisma.organization.findUnique({
       where: isUUID ? { id } : { slug: id },
       select: { id: true },
@@ -57,7 +55,6 @@ export const PUT = withAuth(async (request, user, { params }) => {
     const { role } = validationResult.data
 
     // Get member record
-    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const member = await prisma.organizationMember.findUnique({
       where: {
         id: memberId,
@@ -96,7 +93,6 @@ export const PUT = withAuth(async (request, user, { params }) => {
     }
 
     // Update member role
-    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const updatedMember = await prisma.organizationMember.update({
       where: {
         id: memberId,
@@ -147,7 +143,6 @@ export const DELETE = withAuth(async (request, user, { params }) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     
     // Find organization by id or slug
-    // @ts-expect-error - Organization model exists in Prisma schema
     const orgLookup = await prisma.organization.findUnique({
       where: isUUID ? { id } : { slug: id },
       select: { id: true },
@@ -163,7 +158,6 @@ export const DELETE = withAuth(async (request, user, { params }) => {
     const organizationId = orgLookup.id
 
     // Get member record
-    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const member = await prisma.organizationMember.findUnique({
       where: {
         id: memberId,
@@ -209,7 +203,6 @@ export const DELETE = withAuth(async (request, user, { params }) => {
     }
 
     // Delete member record
-    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     await prisma.organizationMember.delete({
       where: {
         id: memberId,

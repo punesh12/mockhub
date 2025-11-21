@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { Upload, FileText, CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react"
 import Modal from "@/components/shared/components/Modal"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { toast } from "sonner"
-import { motion, AnimatePresence } from "framer-motion"
 import type { ExtractedMock } from "@/lib/openapi-utils"
+import { AnimatePresence, motion } from "framer-motion"
+import { AlertCircle, CheckCircle2, Loader2, Upload } from "lucide-react"
+import { useState } from "react"
+import { toast } from "sonner"
 
 interface ImportOpenApiModalProps {
   open: boolean
@@ -34,7 +34,6 @@ interface ImportResults {
 const ImportOpenApiModal = ({
   open,
   onOpenChange,
-  organizationId,
   organizationSlug,
   onSuccess,
 }: ImportOpenApiModalProps) => {
@@ -79,12 +78,13 @@ const ImportOpenApiModal = ({
         return
       }
 
-      const data = await response.json()
-      setExtractedMocks(data.mocks || [])
+      const data = await response.json() as { mocks?: ExtractedMock[] }
+      const mocks = (data.mocks || []) as ExtractedMock[]
+      setExtractedMocks(mocks)
       
       // Select all by default
-      const allEndpoints = new Set(
-        data.mocks.map((m: ExtractedMock) => `${m.method} ${m.endpoint}`)
+      const allEndpoints = new Set<string>(
+        mocks.map((m) => `${m.method} ${m.endpoint}`)
       )
       setSelectedEndpoints(allEndpoints)
       setStep("preview")

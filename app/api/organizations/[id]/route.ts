@@ -18,7 +18,6 @@ export const GET = withOptionalAuthParams(async (request, { id }, user) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     
     // Find organization by id or slug
-    // @ts-expect-error - Organization model exists in Prisma schema
     const orgLookup = await prisma.organization.findUnique({
       where: isUUID ? { id } : { slug: id },
       select: { id: true, visibility: true },
@@ -35,7 +34,6 @@ export const GET = withOptionalAuthParams(async (request, { id }, user) => {
 
     // For public organizations, allow access without authentication
     if (orgLookup.visibility === "public") {
-      // @ts-expect-error - Organization model exists in Prisma schema
       const organization = await prisma.organization.findUnique({
         where: { id: organizationId },
         include: {
@@ -109,7 +107,6 @@ export const GET = withOptionalAuthParams(async (request, { id }, user) => {
       )
     }
 
-    // @ts-expect-error - Organization model exists in Prisma schema
     const organization = await prisma.organization.findUnique({
       where: { id: organizationId },
       include: {
@@ -184,7 +181,6 @@ export const PUT = withAuth(async (request, user, { params }) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     
     // Find organization by id or slug
-    // @ts-expect-error - Organization model exists in Prisma schema
     const orgLookup = await prisma.organization.findUnique({
       where: isUUID ? { id } : { slug: id },
       select: { id: true },
@@ -221,7 +217,6 @@ export const PUT = withAuth(async (request, user, { params }) => {
     const { name, description, visibility } = validationResult.data
 
     // Get current organization
-    // @ts-expect-error - Organization model exists in Prisma schema
     const currentOrg = await prisma.organization.findUnique({
       where: { id: organizationId },
     })
@@ -240,7 +235,6 @@ export const PUT = withAuth(async (request, user, { params }) => {
     }
 
     // Update organization
-    // @ts-expect-error - Organization model exists in Prisma schema
     const organization = await prisma.organization.update({
       where: { id: organizationId },
       data: {
@@ -315,7 +309,6 @@ export const DELETE = withAuth(async (request, user, { params }) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     
     // Find organization by id or slug
-    // @ts-expect-error - Organization model exists in Prisma schema
     const orgLookup = await prisma.organization.findUnique({
       where: isUUID ? { id } : { slug: id },
       select: { id: true },
@@ -340,7 +333,6 @@ export const DELETE = withAuth(async (request, user, { params }) => {
     }
 
     // Delete organization (cascade will delete members and mocks)
-    // @ts-expect-error - Organization model exists in Prisma schema
     await prisma.organization.delete({
       where: { id: organizationId },
     })

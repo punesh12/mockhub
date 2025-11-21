@@ -3,26 +3,20 @@
  * This module combines Yup validation with sanitization for secure input handling
  */
 
-import { validateAndParse, getValidationErrorMessage } from "./validation"
+import { NextResponse } from "next/server"
 import {
-  sanitizeString,
-  sanitizeEndpoint,
   sanitizeEmail,
-  sanitizeUrl,
+  sanitizeEndpoint,
   sanitizeJson,
   sanitizeSlug,
+  sanitizeString,
+  sanitizeUrl,
 } from "./sanitization"
 import {
-  createMockApiSchema,
-  updateMockApiSchema,
-  createOrganizationSchema,
-  updateOrganizationSchema,
-  updateProfileSchema,
-  changePasswordSchema,
-  inviteMemberSchema,
-  apiTestRequestSchema,
+  apiTestRequestSchema, createMockApiSchema, createOrganizationSchema, getValidationErrorMessage, inviteMemberSchema, updateMockApiSchema, updateOrganizationSchema,
+  updateProfileSchema, validateAndParse
 } from "./validation"
-import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 
 /**
  * Validate and sanitize mock API creation input
@@ -70,7 +64,7 @@ export async function validateAndSanitizeMockApiUpdate(data: unknown) {
   }
 
   // Then sanitize string fields (only if provided)
-  const sanitized: typeof validation.data = {}
+  const sanitized: Partial<typeof validation.data> = {}
   if (validation.data.name !== undefined) {
     sanitized.name = sanitizeString(validation.data.name)
   }
@@ -84,7 +78,7 @@ export async function validateAndSanitizeMockApiUpdate(data: unknown) {
     sanitized.responseCode = validation.data.responseCode // Already validated number
   }
   if (validation.data.responseBody !== undefined) {
-    sanitized.responseBody = sanitizeJson(validation.data.responseBody)
+    sanitized.responseBody = sanitizeJson(validation.data.responseBody) as Prisma.InputJsonValue
   }
 
   return { success: true as const, data: sanitized }
@@ -135,7 +129,7 @@ export async function validateAndSanitizeOrganizationUpdate(data: unknown) {
   }
 
   // Then sanitize string fields (only if provided)
-  const sanitized: typeof validation.data = {}
+  const sanitized: Partial<typeof validation.data> = {}
   if (validation.data.name !== undefined) {
     sanitized.name = sanitizeString(validation.data.name)
   }
@@ -168,7 +162,7 @@ export async function validateAndSanitizeProfileUpdate(data: unknown) {
   }
 
   // Then sanitize string fields (only if provided)
-  const sanitized: typeof validation.data = {}
+  const sanitized: Partial<typeof validation.data>     = {}
   if (validation.data.name !== undefined) {
     sanitized.name = sanitizeString(validation.data.name)
   }

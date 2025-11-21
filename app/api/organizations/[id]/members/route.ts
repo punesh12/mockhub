@@ -17,7 +17,6 @@ export const GET = withAuth(async (request, user, { params }) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     
     // Find organization by id or slug
-    // @ts-expect-error - Organization model exists in Prisma schema
     const orgLookup = await prisma.organization.findUnique({
       where: isUUID ? { id } : { slug: id },
       select: { id: true },
@@ -41,7 +40,6 @@ export const GET = withAuth(async (request, user, { params }) => {
       )
     }
 
-    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const members = await prisma.organizationMember.findMany({
       where: {
         organizationId: organizationId,
@@ -92,7 +90,6 @@ export const POST = withAuth(async (request, user, { params }) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     
     // Find organization by id or slug
-    // @ts-expect-error - Organization model exists in Prisma schema
     const orgLookup = await prisma.organization.findUnique({
       where: isUUID ? { id } : { slug: id },
       select: { id: true },
@@ -148,7 +145,6 @@ export const POST = withAuth(async (request, user, { params }) => {
     }
 
     // Check if user is already a member
-    // @ts-expect-error - OrganizationMember model exists in Prisma schema
     const existingMember = await prisma.organizationMember.findUnique({
       where: {
         organizationId_userId: {
@@ -173,8 +169,7 @@ export const POST = withAuth(async (request, user, { params }) => {
       )
     }
 
-    // Create member record
-    // @ts-expect-error - OrganizationMember model exists in Prisma schema
+    // Create member record using Prisma client
     const member = await prisma.organizationMember.create({
       data: {
         organizationId: organizationId,

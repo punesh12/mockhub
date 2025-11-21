@@ -1,6 +1,7 @@
 import { withAuth, withOptionalAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { generateUniqueSlug } from "@/lib/organization-auth"
 
 /**
@@ -20,17 +21,8 @@ export const GET = withOptionalAuth(async (request, user) => {
 
     // If requesting public organizations discovery, return all public orgs
     if (publicOnly) {
-      const whereClause: {
-        visibility: string
-        AND?: Array<{
-          OR: Array<{
-            name?: { contains: string; mode: string }
-            description?: { contains: string; mode: string }
-            slug?: { contains: string; mode: string }
-          }>
-        }>
-      } = {
-        visibility: visibility || "public",
+      const whereClause: Prisma.OrganizationWhereInput = {
+        visibility: (visibility || "public") as "public" | "private",
       }
 
       // Add search filter
@@ -47,7 +39,6 @@ export const GET = withOptionalAuth(async (request, user) => {
       }
 
       const [organizations, total] = await Promise.all([
-        // @ts-expect-error - Organization model exists in Prisma schema
         prisma.organization.findMany({
           where: whereClause,
           include: {
@@ -71,7 +62,6 @@ export const GET = withOptionalAuth(async (request, user) => {
           skip,
           take: limit,
         }),
-        // @ts-expect-error - Organization model exists in Prisma schema
         prisma.organization.count({
           where: whereClause,
         }),
@@ -85,7 +75,6 @@ export const GET = withOptionalAuth(async (request, user) => {
             if (org.ownerId === user.id) {
               userRole = "owner"
             } else {
-              // @ts-expect-error - OrganizationMember model exists in Prisma schema
               const member = await prisma.organizationMember.findUnique({
                 where: {
                   organizationId_userId: {
@@ -124,26 +113,7 @@ export const GET = withOptionalAuth(async (request, user) => {
     }
 
     // Build where clause for user's organizations
-    const whereClause: {
-      OR: Array<
-        | { ownerId: string }
-        | {
-            members: {
-              some: {
-                userId: string
-              }
-            }
-          }
-      >
-      visibility?: string
-      AND?: Array<{
-        OR: Array<{
-          name?: { contains: string; mode: string }
-          description?: { contains: string; mode: string }
-          slug?: { contains: string; mode: string }
-        }>
-      }>
-    } = {
+    const whereClause: Prisma.OrganizationWhereInput = {
       OR: [
         { ownerId: user.id },
         {
@@ -157,7 +127,7 @@ export const GET = withOptionalAuth(async (request, user) => {
     }
 
     if (visibility) {
-      whereClause.visibility = visibility
+      whereClause.visibility = visibility as "public" | "private"
     }
 
     // Add search filter
@@ -175,7 +145,6 @@ export const GET = withOptionalAuth(async (request, user) => {
 
     // Get organizations where user is owner or member
     const [organizations, total] = await Promise.all([
-      // @ts-expect-error - Organization model exists in Prisma schema
       prisma.organization.findMany({
         where: whereClause,
         include: {
@@ -212,7 +181,6 @@ export const GET = withOptionalAuth(async (request, user) => {
         skip,
         take: limit,
       }),
-      // @ts-expect-error - Organization model exists in Prisma schema
       prisma.organization.count({
         where: whereClause,
       }),
@@ -226,7 +194,6 @@ export const GET = withOptionalAuth(async (request, user) => {
         if (org.ownerId === user.id) {
           userRole = "owner"
         } else {
-          // @ts-expect-error - OrganizationMember model exists in Prisma schema
           const member = await prisma.organizationMember.findUnique({
             where: {
               organizationId_userId: {
@@ -291,8 +258,7 @@ export const POST = withAuth(async (request, user) => {
     // Generate unique slug (will be sanitized in generateUniqueSlug)
     const slug = await generateUniqueSlug(name)
 
-    // Create organization with creator as owner
-    // @ts-expect-error - Organization model exists in Prisma schema
+    // Create organization with creator as owner  
     const organization = await prisma.organization.create({
       data: {
         name: name.trim(),
