@@ -59,32 +59,46 @@ export const PUT = withAuth(async (request, user) => {
       )
     }
 
-    // Check if email is already taken by another user
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        email: email,
-        id: { not: user.id },
-      },
+    // Check if email is already taken by another user (if email is being updated)
+    if (email) {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          email: email,
+          id: { not: user.id },
+        },
+      })
+
+      if (existingUser) {
+        return NextResponse.json(
+          { error: "Email is already taken" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Get existing user to use as fallback for create
+    const existingDbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { name: true, email: true },
     })
 
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "Email is already taken" },
-        { status: 400 }
-      )
+    // Prepare update data (only include fields that are provided)
+    const updateData: { name?: string; email?: string } = {}
+    if (name !== undefined) {
+      updateData.name = name
+    }
+    if (email !== undefined) {
+      updateData.email = email
     }
 
     // Update user in database
     const updatedUser = await prisma.user.upsert({
       where: { id: user.id },
-      update: {
-        name,
-        email,
-      },
+      update: updateData,
       create: {
         id: user.id,
-        name,
-        email,
+        name: name || existingDbUser?.name || user.user_metadata?.name || user.email?.split("@")[0] || "User",
+        email: email || existingDbUser?.email || user.email || "",
         password: "",
       },
       select: {

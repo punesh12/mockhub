@@ -118,7 +118,6 @@ async function handleMockRequest(
       endpoint = "/" + endpointParts.join("/")
 
       // Find organization by slug
-      // @ts-expect-error - Organization model exists in Prisma schema
       const organization = await prisma.organization.findUnique({
         where: { slug: organizationSlug },
         select: { id: true, visibility: true },

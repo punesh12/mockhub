@@ -1,6 +1,7 @@
 import { withAuthParams } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { checkOrganizationAccess, canCreateMockInOrganization } from "@/lib/organization-auth"
 import {
   parseOpenApiSpec,
@@ -19,7 +20,6 @@ export const POST = withAuthParams(async (request, { id }, user) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
 
     // Find organization by id or slug
-    // @ts-expect-error - Organization model exists in Prisma schema
     const orgLookup = await prisma.organization.findUnique({
       where: isUUID ? { id } : { slug: id },
       select: { id: true },
@@ -173,7 +173,6 @@ export const POST = withAuthParams(async (request, { id }, user) => {
     for (const mock of mocksToCreate) {
       try {
         // Check if mock already exists
-        // @ts-expect-error - MockApi model exists in Prisma schema
         const existingMock = await prisma.mockApi.findFirst({
           where: {
             organizationId,
@@ -191,7 +190,6 @@ export const POST = withAuthParams(async (request, { id }, user) => {
         }
 
         // Create mock
-        // @ts-expect-error - MockApi model exists in Prisma schema
         const createdMock = await prisma.mockApi.create({
           data: {
             userId: user.id,
@@ -200,7 +198,7 @@ export const POST = withAuthParams(async (request, { id }, user) => {
             endpoint: mock.endpoint,
             method: mock.method.toUpperCase(),
             responseCode: mock.responseCode,
-            responseBody: mock.responseBody,
+            responseBody: mock.responseBody as Prisma.InputJsonValue,
           },
         })
 

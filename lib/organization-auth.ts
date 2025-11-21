@@ -36,8 +36,7 @@ export async function generateUniqueSlug(name: string): Promise<string> {
   let slug = baseSlug
   let counter = 1
 
-  while (true) {
-    // @ts-expect-error - Organization model exists in Prisma schema, TypeScript types may need refresh
+  while (true) {  
     const existing = await prisma.organization.findUnique({
       where: { slug },
     })
@@ -60,7 +59,6 @@ export async function checkOrganizationAccess(
   organizationId: string
 ): Promise<OrganizationAccess> {
   // Check if user is the owner
-  // @ts-expect-error - Organization model exists in Prisma schema, TypeScript types may need refresh
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
     include: {
