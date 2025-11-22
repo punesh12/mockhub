@@ -46,18 +46,33 @@ jest.mock("next/server", () => {
         this.method = options.method || "GET"
         this.headers = new Headers(options.headers || {})
         this.nextUrl = new URL(url)
+        this._body = options.body
+        // Mock json() method
+        this.json = jest.fn().mockImplementation(async () => {
+          if (this._body) {
+            return typeof this._body === "string" ? JSON.parse(this._body) : this._body
+          }
+          return {}
+        })
       }
     },
     NextResponse: {
       json: (data, init = {}) => {
         const headers = new Headers(init.headers || {})
-        return {
+        const cookies = {
+          set: jest.fn(),
+          getAll: jest.fn().mockReturnValue([]),
+          delete: jest.fn(),
+        }
+        const response = {
           status: init.status || 200,
           statusText: init.statusText || "OK",
           headers,
           json: () => Promise.resolve(data),
           text: () => Promise.resolve(JSON.stringify(data)),
+          cookies,
         }
+        return response
       },
     },
   }

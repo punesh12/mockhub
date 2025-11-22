@@ -30,7 +30,21 @@ const customJestConfig = {
     "!**/node_modules/**",
     "!**/.next/**",
     "!**/coverage/**",
+    "!app/layout.tsx",
+    "!app/page.tsx",
+    "!app/**/layout.tsx",
+    "!app/**/loading.tsx",
+    "!app/**/error.tsx",
+    "!app/**/not-found.tsx",
   ],
+  coverageThreshold: {
+    global: {
+      branches: 20,
+      functions: 15,
+      lines: 20,
+      statements: 20,
+    },
+  },
   moduleDirectories: ["node_modules", "<rootDir>"],
   transformIgnorePatterns: [
     "/node_modules/",
