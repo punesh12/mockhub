@@ -335,6 +335,28 @@ See [docs/ROUTES.md](./docs/ROUTES.md) for complete route documentation.
 
 ## 🧪 Testing
 
+### Automated Tests
+
+MockHub has a comprehensive test suite with **400 tests** covering API routes, utilities, components, and integration flows.
+
+```bash
+# Run all tests
+yarn test
+
+# Run tests in watch mode
+yarn test:watch
+
+# Generate coverage report
+yarn test:coverage
+```
+
+**Test Statistics:**
+- ✅ 398 tests passing, 2 skipped
+- ✅ 35 test suites passing
+- ✅ Coverage: 22% overall (focused on business logic)
+
+See [Testing Documentation](./docs/TESTING.md) for detailed information.
+
 ### Manual Testing
 
 1. **Create a Mock API:**
@@ -376,6 +398,8 @@ curl -X GET http://localhost:3000/api/org/my-org/users
 - **[Supabase Setup](./docs/SUPABASE_SETUP.md)** - Supabase configuration guide
 - **[Routes](./docs/ROUTES.md)** - Complete routes documentation
 - **[Tasks](./docs/TASKS.md)** - Development tasks and roadmap
+- **[Testing](./docs/TESTING.md)** - Comprehensive testing documentation
+- **[Test Coverage Summary](./docs/TEST_COVERAGE_SUMMARY.md)** - Test coverage report
 
 ## 🤝 Contributing
 

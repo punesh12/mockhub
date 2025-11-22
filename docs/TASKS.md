@@ -796,15 +796,15 @@ This document outlines all tasks to be completed for the MockHub project.
 
 ### Unit Tests
 
-- [ ] Write tests for API routes
-- [ ] Write tests for utilities
-- [ ] Write tests for components
-- [ ] Set up Jest and React Testing Library
+- [x] Write tests for API routes (133 tests - Auth: 30, Mocks: 27, Organizations: 52, History: 24)
+- [x] Write tests for utilities (187 tests - All utility functions covered)
+- [x] Write tests for components (74 tests - Shared components covered)
+- [x] Set up Jest and React Testing Library
 
 ### Integration Tests
 
-- [ ] Test authentication flow
-- [ ] Test mock API CRUD operations
+- [x] Test authentication flow (2 tests - Signup → Login → Me → Logout)
+- [x] Test mock API CRUD operations (2 tests - Full CRUD flow)
 - [ ] Test API testing playground
 - [ ] Test request history
 
